@@ -203,24 +203,35 @@ describe("freshness and fonts", () => {
 		expect(html).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
 	});
 
-	it("tints the browser chrome with each scheme's yellow", () => {
+	it("tints the browser chrome with each scheme's cyan", () => {
 		const html = renderPage(null);
-		const yellows = [...html.matchAll(/--yellow: (#[0-9a-f]{6});/g)].map((m) => m[1]);
-		// Light first, then the deeper yellow the dark sheet uses
-		expect(yellows).toHaveLength(2);
-		expect(yellows[1]).not.toBe(yellows[0]);
-		expect(html).toContain(`<meta name="theme-color" content="${yellows[0]}" media="(prefers-color-scheme: light)">`);
-		expect(html).toContain(`<meta name="theme-color" content="${yellows[1]}" media="(prefers-color-scheme: dark)">`);
+		const cyans = [...html.matchAll(/--cyan: (#[0-9a-f]{6});/g)].map((m) => m[1]);
+		// Light first, then the deeper cyan the dark sheet uses
+		expect(cyans).toHaveLength(2);
+		expect(cyans[1]).not.toBe(cyans[0]);
+		expect(html).toContain(`<meta name="theme-color" content="${cyans[0]}" media="(prefers-color-scheme: light)">`);
+		expect(html).toContain(`<meta name="theme-color" content="${cyans[1]}" media="(prefers-color-scheme: dark)">`);
 	});
 
-	it("keeps No. 1's text at 7:1 or more on the dark yellow", () => {
+	it("keeps No. 1's text at 7:1 or more on the dark cyan", () => {
 		const html = renderPage(null);
 		const dark = html.match(/prefers-color-scheme: dark\) \{\s*:root \{([^}]+)\}/)?.[1] ?? "";
 		const token = (name: string) => dark.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
-		const yellow = token("yellow");
-		expect(dark).toContain("--one-bg: var(--yellow);");
-		expect(contrast(yellow, token("one-fg"))).toBeGreaterThanOrEqual(7);
-		expect(contrast(yellow, token("one-muted"))).toBeGreaterThanOrEqual(7);
+		const cyan = token("cyan");
+		expect(dark).toContain("--one-bg: var(--cyan);");
+		expect(contrast(cyan, token("one-fg"))).toBeGreaterThanOrEqual(7);
+		expect(contrast(cyan, token("one-muted"))).toBeGreaterThanOrEqual(7);
+	});
+
+	it("keeps the masthead and No. 1's score at 7:1 or more on the light sheet, and the favicon in the same cyan", () => {
+		const html = renderPage(null);
+		const light = html.match(/:root \{([^}]+)\}/)?.[1] ?? "";
+		const token = (name: string) => light.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
+		const cyan = token("cyan");
+		expect(contrast(cyan, token("black"))).toBeGreaterThanOrEqual(7);
+		expect(token("one-gain")).toBe(cyan);
+		expect(contrast(token("one-gain"), token("one-bg"))).toBeGreaterThanOrEqual(7);
+		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
 	});
 });
 
