@@ -270,6 +270,14 @@ describe("footer", () => {
 			expect(footer).toContain(`<a href="/api/trending">JSON</a>`);
 			expect(footer).toContain(`<a href="https://github.com/danjdewhurst/trending-models">Source</a>`);
 			expect(footer).toContain(`<a href="https://ddewhurst.com" rel="author">ddewhurst.com</a>`);
+			// The sibling chart comes first, then this site's own links
+			expect([...footer!.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual([
+				"https://huggingface.co/models",
+				"https://trending.ddewhurst.com/",
+				"/api/trending",
+				"https://github.com/danjdewhurst/trending-models",
+				"https://ddewhurst.com",
+			]);
 		}
 	});
 });
