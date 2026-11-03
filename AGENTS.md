@@ -3,8 +3,8 @@
 A Cloudflare Worker that reads the Hugging Face trending model list every 4 hours and serves it as a styled page. It is a sibling of `forjd/trending-repos` (GitHub trending, `~/Projects/trending-repos`) and shares its structure and design.
 
 - **Live:** https://models.ddewhurst.com (also https://trending-models.danjdewhurst.workers.dev). The domain is set in `wrangler.jsonc` and `SITE_URL` in `src/render.ts`
-- **Repo:** `danjdewhurst/trending-models` (MIT)
-- **Deploys:** by hand with `npm run deploy` until the deploy workflow is switched on. See Deploying
+- **Repo:** `danjdewhurst/trending-models` (public, MIT)
+- **Deploys:** automatic. Merging a PR into `main` deploys it to production, unless it changes only Markdown or `LICENSE` (see Deploying)
 
 ## How it works
 
@@ -67,7 +67,7 @@ If D1 fails, the snapshot is still published without badges. `/__refresh` then r
 
 First deployed on 2026-11-03. The KV namespace is called `trending-models` (the name `TRENDING` belongs to trending-repos), and the D1 database is `trending-models`. Only the `REFRESH_KEY` secret is set; `HF_TOKEN` and `HEALTHCHECK_URL` are not.
 
-`.github/workflows/deploy.yml` runs on every push to `main` (pushes that change only Markdown or `LICENSE` skip it), but only when the repository variable `DEPLOY_ENABLED` is `true`. It reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `production` environment. The token needs Workers Scripts, Workers KV and D1 edit on the account, and Workers Routes edit on the `ddewhurst.com` zone.
+`.github/workflows/deploy.yml` runs on every push to `main` (pushes that change only Markdown or `LICENSE` skip it): typecheck, tests, then `npm run deploy`. You can also run it by hand with `gh workflow run deploy.yml`. It runs only when the repository variable `DEPLOY_ENABLED` is `true` (set on 2026-11-03; set it to `false` to pause deploys). It reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `production` environment, which accepts the `main` branch only. The token needs Workers Scripts, Workers KV and D1 edit on the account, and Workers Routes edit on the `ddewhurst.com` zone.
 
 Never run `wrangler deploy` on its own: `npm run deploy` applies new migrations first. Deploys from the `ai-agent` VM use the wrangler OAuth login in `~/.config/.wrangler` (see `~/Projects/trending-repos/AGENTS.md` for the re-login steps).
 
@@ -106,7 +106,7 @@ API fields the page uses: `trendingScore` (the sort key and the "Score" column),
 
 ## Gotchas
 
-- **Merging to `main` changes production** once `DEPLOY_ENABLED` is `true`. The deploy workflow applies new D1 migrations, then deploys the Worker. The old Worker runs against the new schema for a short time, so make migrations additive. The workflow does not run a refresh, so refresh by hand after a change to data shape.
+- **Merging to `main` changes production.** The deploy workflow applies new D1 migrations, then deploys the Worker. The old Worker runs against the new schema for a short time, so make migrations additive. The workflow does not run a refresh, so refresh by hand after a change to data shape.
 - **The fetch depends on the Hugging Face API's shape.** If the list call fails or returns fewer than 5 usable models, `refresh()` throws and keeps the old data: `/__refresh` returns 502 and the cron run shows as failed. Check `src/huggingface.ts`, then refresh `test/fixtures/trending.json`.
 - **Model ids are checked before they become links** (`MODEL_ID` in `src/huggingface.ts`). Avatars are kept only from `https://cdn-avatars.huggingface.co/`, which is also the only image host in the CSP. Change both together.
 - **Avatar lookups stop at the first rate-limit response.** The remaining authors print a blank square.
