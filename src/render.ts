@@ -108,7 +108,7 @@ ${
 </main>
 <footer>
 	<p>Data from <a href="https://huggingface.co/models">huggingface.co/models</a> and the Hugging Face API. Not affiliated with Hugging Face.</p>
-	<p class="foot-links"><a href="/api/trending">JSON</a><a href="https://github.com/danjdewhurst/trending-models">Source</a><a href="https://ddewhurst.com" rel="author">ddewhurst.com</a></p>
+	<p class="foot-links"><a href="https://trending.ddewhurst.com/">GitHub trending</a><a href="/api/trending">JSON</a><a href="https://github.com/danjdewhurst/trending-models">Source</a><a href="https://ddewhurst.com" rel="author">ddewhurst.com</a></p>
 </footer>
 </body>
 </html>`;
@@ -448,7 +448,7 @@ footer {
 	font-size: 13px;
 	color: var(--muted);
 }
-.foot-links { display: flex; gap: 20px; font-weight: 800; color: var(--ink); }
+.foot-links { display: flex; flex-wrap: wrap; gap: 4px 20px; font-weight: 800; color: var(--ink); }
 
 /* Wide screens print both columns at chart density: one line each for meta and facts */
 @media (min-width: 1101px) {

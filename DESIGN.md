@@ -278,7 +278,7 @@ Pink block, ink uppercase label (800, 10.5px, 0.1em), padding 4px 6px 3px, rotat
 "No trending data yet." in uppercase display at 48px, then one line saying when the first chart compiles. The key strip and dateline are omitted.
 
 ### Footer
-A 3px ink rule over muted small text: the data credit to huggingface.co/models, "Not affiliated with Hugging Face", and bold ink links to the JSON, the source and the author's blog (ddewhurst.com).
+A 3px ink rule over muted small text: the data credit to huggingface.co/models, "Not affiliated with Hugging Face", and bold ink links to the sibling GitHub trending chart (trending.ddewhurst.com), the JSON, the source and the author's blog (ddewhurst.com).
 
 ## Do's and Don'ts
 
