@@ -222,6 +222,17 @@ describe("freshness and fonts", () => {
 		expect(contrast(cyan, token("one-fg"))).toBeGreaterThanOrEqual(7);
 		expect(contrast(cyan, token("one-muted"))).toBeGreaterThanOrEqual(7);
 	});
+
+	it("keeps the masthead and No. 1's score at 7:1 or more on the light sheet, and the favicon in the same cyan", () => {
+		const html = renderPage(null);
+		const light = html.match(/:root \{([^}]+)\}/)?.[1] ?? "";
+		const token = (name: string) => light.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
+		const cyan = token("cyan");
+		expect(contrast(cyan, token("black"))).toBeGreaterThanOrEqual(7);
+		expect(token("one-gain")).toBe(cyan);
+		expect(contrast(token("one-gain"), token("one-bg"))).toBeGreaterThanOrEqual(7);
+		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
+	});
 });
 
 describe("link previews", () => {

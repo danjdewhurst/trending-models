@@ -171,7 +171,7 @@ A two-colour trade-paper palette (cyan and ink) with one spot colour, on a white
 The dark sheet is newsprint at night, not white on black. Pure white on near-black glares, and thin light strokes blur, so:
 - Ink is a warm off-white (`#e8e4da`, 14:1 on the sheet) on a lifted warm sheet (`#161513`). Do not push ink back to white or the sheet to black.
 - Text set in Archivo on the dark sheet prints at weight 450 instead of 400, and uses the platform's default font smoothing. Display numerals keep `antialiased`, so the heavy figures stay crisp. Dark type on light grounds (the masthead, the No. 1 row, the stale strip, NEW stamps) keeps the light-mode weight and smoothing.
-- Cyan steps down to `chart-cyan-dark` (`#2cc0cf`, OKLCH 0.74 / 0.118, against 0.80 / 0.132 for Chart Cyan). Full-strength cyan blocks on the near-black sheet are the brightest thing on the page by far, and they glare. Ink on it stays above 9:1, and `one-muted-dark` stays above 7:1. Do not push the dark cyan back to `#20d4e6`.
+- Cyan steps down to `chart-cyan-dark` (`#2cc0cf`, OKLCH 0.74 / 0.118, against 0.80 / 0.132 for Chart Cyan). Full-strength cyan blocks on the near-black sheet are the brightest thing on the page by far, and they glare. Ink on it stays above 8:1, and `one-muted-dark` stays above 7:1. Do not push the dark cyan back to `#20d4e6`.
 - Position numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores stay full Ink, because they lead the row with the name.
 
 ### Named Rules

@@ -76,7 +76,7 @@ HEALTHCHECK_URL=https://hc-ping.com/...   # optional
 
 ### Deploy your own
 
-1. Create a KV namespace and a D1 database, and put their ids in `wrangler.jsonc` in place of the zero placeholders:
+1. Create a KV namespace and a D1 database, and put their ids in `wrangler.jsonc` in place of the ids there now (they belong to the live site):
    ```bash
    npx wrangler kv namespace create trending-models
    npx wrangler d1 create trending-models
