@@ -4,7 +4,7 @@ A Cloudflare Worker that reads the Hugging Face trending model list every 4 hour
 
 - **Live:** https://models.ddewhurst.com (also https://trending-models.danjdewhurst.workers.dev). The domain is set in `wrangler.jsonc` and `SITE_URL` in `src/render.ts`
 - **Repo:** `danjdewhurst/trending-models` (public, MIT)
-- **Deploys:** automatic. Merging a PR into `main` deploys it to production (see Deploying)
+- **Deploys:** automatic. Merging a PR into `main` deploys it to production, unless it changes only Markdown or `LICENSE` (see Deploying)
 
 ## How it works
 
