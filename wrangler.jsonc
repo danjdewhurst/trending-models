@@ -1,0 +1,35 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "trending-models",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	"observability": { "enabled": true },
+
+	// Self-hosted fonts and the link preview image. Files in public/ are served before the Worker runs
+	"assets": { "directory": "public" },
+
+	// Served on a custom domain, and on workers.dev too
+	"routes": [{ "pattern": "models.ddewhurst.com", "custom_domain": true }],
+	"workers_dev": true,
+
+	// Read the Hugging Face trending list every 4 hours
+	"triggers": { "crons": ["0 */4 * * *"] },
+
+	// Latest snapshot, stored under a single key.
+	// Before the first deploy, replace the id with the one from `wrangler kv namespace create TRENDING`
+	"kv_namespaces": [{ "binding": "TRENDING", "id": "00000000000000000000000000000000" }],
+
+	// History: one row per model per scrape. Schema lives in migrations/.
+	// Before the first deploy, replace the id with the one from `wrangler d1 create trending-models`
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "trending-models",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	]
+
+	// Secrets (not committed): REFRESH_KEY for POST /__refresh, optional HF_TOKEN and
+	// HEALTHCHECK_URL. Set with `wrangler secret put <NAME>`. For local dev, put them in .dev.vars
+}

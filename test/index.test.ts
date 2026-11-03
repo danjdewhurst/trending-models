@@ -1,0 +1,398 @@
+import { createScheduledController, env } from "cloudflare:test";
+import { exports } from "cloudflare:workers";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import handler from "../src/index";
+import { etagMatches } from "../src/http";
+import { MIN_CRON_INTERVAL_MS, refresh } from "../src/refresh";
+import { STALE_AFTER_MS } from "../src/render";
+import { pingHealthcheck } from "../src/health";
+import type { Snapshot } from "../src/types";
+import { apiModel, five, HEALTHCHECK_URL, mockHuggingFace, trendingJson } from "./helpers";
+
+const worker = exports.default as Fetcher;
+const get = (path: string, init?: RequestInit) => worker.fetch(`https://example.com${path}`, init);
+// A D1 binding that fails as if a migration had not been applied
+const brokenDb = {
+	prepare() {
+		throw new Error("no such table: model_days");
+	},
+} as unknown as D1Database;
+const pings = (fetch: ReturnType<typeof mockHuggingFace>) =>
+	fetch.mock.calls.map(([input]) => String(input instanceof Request ? input.url : input)).filter((u) => u.startsWith("https://hc.example"));
+
+beforeEach(async () => {
+	await env.DB.exec("DELETE FROM snapshot_models; DELETE FROM model_days");
+	await env.TRENDING.delete("latest");
+});
+afterEach(() => {
+	vi.restoreAllMocks();
+	vi.useRealTimers();
+});
+
+describe("routes", () => {
+	it("serves the empty state before the first scrape", async () => {
+		const res = await get("/");
+		expect(res.status).toBe(200);
+		expect(await res.text()).toContain("No trending data yet");
+		expect(await (await get("/api/trending")).json()).toEqual({ fetchedAt: null, models: [] });
+	});
+
+	it("sends security and cache headers", async () => {
+		const res = await get("/");
+		expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
+		expect(res.headers.get("content-security-policy")).toContain("font-src 'self'");
+		expect(await res.text()).not.toContain("fonts.googleapis.com");
+		expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		expect(res.headers.get("cache-control")).toBe("public, max-age=60");
+		expect((await get("/api/trending")).headers.get("cache-control")).toBe("public, max-age=60");
+	});
+
+	it("allows images only from Hugging Face's avatar host, and no scripts", async () => {
+		const csp = (await get("/")).headers.get("content-security-policy")!;
+		expect(csp).toMatch(/img-src https:\/\/cdn-avatars\.huggingface\.co data:;/);
+		expect(csp).not.toContain("script-src");
+	});
+
+	it("sends nosniff on JSON and error replies too", async () => {
+		for (const res of [await get("/api/trending"), await get("/nope"), await get("/", { method: "POST" }), await get("/__refresh", { method: "POST" })]) {
+			expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		}
+	});
+
+	it("keeps the JSON ETag while the page ETag follows the age, without spaces", async () => {
+		const fetchedAt = "2026-10-05T00:00:00.000Z";
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt, models: [] }));
+		const at = async (minutes: number) => {
+			vi.useFakeTimers({ now: Date.parse(fetchedAt) + minutes * 60_000, toFake: ["Date"] });
+			return { page: (await get("/")).headers.get("etag")!, api: (await get("/api/trending")).headers.get("etag")! };
+		};
+		const early = await at(5);
+		const later = await at(30);
+		expect(later.api).toBe(early.api);
+		expect(later.page).not.toBe(early.page);
+		// RFC 9110: an entity tag is "..." with no spaces inside
+		for (const tag of [early.page, later.page, early.api]) expect(tag).toMatch(/^"[^\s"]+"$/);
+		const res = await get("/api/trending", { headers: { "if-none-match": early.api } });
+		expect(res.status).toBe(304);
+	});
+
+	it("answers a matching If-None-Match with 304", async () => {
+		const etag = (await get("/api/trending")).headers.get("etag")!;
+		const res = await get("/api/trending", { headers: { "if-none-match": etag } });
+		expect(res.status).toBe(304);
+	});
+
+	it("matches the weak ETag that Cloudflare sends after compression", async () => {
+		const etag = (await get("/")).headers.get("etag")!;
+		expect((await get("/", { headers: { "if-none-match": `W/${etag}` } })).status).toBe(304);
+		expect((await get("/", { headers: { "if-none-match": `"other", W/${etag}` } })).status).toBe(304);
+		expect((await get("/", { headers: { "if-none-match": `W/"other"` } })).status).toBe(200);
+	});
+
+	it("changes the page ETag when the stale notice appears", async () => {
+		// "12 hours ago" on both sides of the 12-hour limit
+		const fetchedAt = "2026-10-05T00:00:00.000Z";
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt, models: [] }));
+		const at = (ms: number, init?: RequestInit) => {
+			vi.useFakeTimers({ now: Date.parse(fetchedAt) + ms, toFake: ["Date"] });
+			return get("/", init);
+		};
+		const before = await at(STALE_AFTER_MS - 60_000);
+		const etag = before.headers.get("etag")!;
+		expect(await before.text()).not.toContain(`class="stale"`);
+		const after = await at(STALE_AFTER_MS + 60_000, { headers: { "if-none-match": etag } });
+		expect(after.status).toBe(200);
+		expect(after.headers.get("etag")).not.toBe(etag);
+		expect(await after.text()).toContain(`class="stale"`);
+	});
+
+	it("answers HEAD without a body", async () => {
+		const res = await get("/", { method: "HEAD" });
+		expect(res.status).toBe(200);
+		expect(res.headers.get("etag")).toBeTruthy();
+		expect(await res.text()).toBe("");
+	});
+
+	it("rejects other methods and unknown paths", async () => {
+		expect((await get("/", { method: "POST" })).status).toBe(405);
+		expect((await get("/__refresh")).status).toBe(405);
+		expect((await get("/nope")).status).toBe(404);
+	});
+
+	it("requires the refresh key", async () => {
+		const res = await get("/__refresh", { method: "POST", headers: { authorization: "Bearer wrong" } });
+		expect(res.status).toBe(401);
+		expect((await get("/__refresh", { method: "POST" })).status).toBe(401);
+	});
+
+	it("refuses every refresh when no key is configured", async () => {
+		for (const authorization of ["Bearer ", "Bearer", ""]) {
+			const req = new Request("https://example.com/__refresh", { method: "POST", headers: { authorization } });
+			const res = await handler.fetch!(req as Request<unknown, IncomingRequestCfProperties>, { ...env, REFRESH_KEY: "" });
+			expect(res.status).toBe(401);
+		}
+	});
+});
+
+describe("etagMatches", () => {
+	it("ignores W/ and accepts lists and *", () => {
+		expect(etagMatches(null, `"a"`)).toBe(false);
+		expect(etagMatches(`"a"`, `"a"`)).toBe(true);
+		expect(etagMatches(`W/"a"`, `"a"`)).toBe(true);
+		expect(etagMatches(`"b" , W/"a"`, `"a"`)).toBe(true);
+		expect(etagMatches("*", `"a"`)).toBe(true);
+		expect(etagMatches(`"ab"`, `"a"`)).toBe(false);
+	});
+});
+
+describe("refresh", () => {
+	it("scrapes, saves history and publishes to KV", async () => {
+		mockHuggingFace(trendingJson);
+		const res = await get("/__refresh", { method: "POST", headers: { authorization: "Bearer test-key" } });
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({ models: 5, history: "ok" });
+
+		const snapshot = await env.TRENDING.get<Snapshot>("latest", "json");
+		expect(snapshot?.models[0]).toMatchObject({ daysTrending: 1, avatarUrl: expect.stringMatching(/^https:\/\/cdn-avatars/) });
+		expect(snapshot?.historyStart).toBe(snapshot?.fetchedAt.slice(0, 10));
+		const { count } = (await env.DB.prepare("SELECT COUNT(*) AS count FROM snapshot_models").first<{ count: number }>())!;
+		expect(count).toBe(5);
+	});
+
+	it("fails and keeps the old data when the scrape looks broken", async () => {
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt: "2026-01-01T00:00:00.000Z", models: [] }));
+		mockHuggingFace([apiModel("a/b")]);
+		const res = await get("/__refresh", { method: "POST", headers: { authorization: "Bearer test-key" } });
+		expect(res.status).toBe(502);
+		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe("2026-01-01T00:00:00.000Z");
+	});
+
+	it("fails when no model has a trending score", async () => {
+		mockHuggingFace(five.map((m) => ({ ...m, trendingScore: 0 })));
+		await expect(refresh(env)).rejects.toThrow(/no trending scores/);
+	});
+
+	it("fails and keeps the old data when the API is down", async () => {
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt: "2026-01-01T00:00:00.000Z", models: [] }));
+		mockHuggingFace(new Response("down", { status: 500 }));
+		await expect(refresh(env)).rejects.toThrow(/returned 500/);
+		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe("2026-01-01T00:00:00.000Z");
+	});
+
+	it("still publishes when every avatar lookup fails", async () => {
+		mockHuggingFace(trendingJson, () => new Response("down", { status: 500 }));
+		const { snapshot } = await refresh(env);
+		expect(snapshot.models).toHaveLength(5);
+		expect(snapshot.models.every((m) => m.avatarUrl === null)).toBe(true);
+	});
+
+	it("reports a history failure from /__refresh", async () => {
+		mockHuggingFace(trendingJson);
+		const req = new Request("https://example.com/__refresh", { method: "POST", headers: { authorization: "Bearer test-key" } });
+		const res = await handler.fetch!(req as Request<unknown, IncomingRequestCfProperties>, { ...env, DB: brokenDb });
+		expect(res.status).toBe(200);
+		expect(await res.json()).toMatchObject({ models: 5, history: expect.stringMatching(/^failed: .*no such table/) });
+	});
+
+	it("still publishes when D1 fails, and reports the history error", async () => {
+		mockHuggingFace(trendingJson);
+		const { snapshot, historyError } = await refresh({ ...env, DB: brokenDb });
+		expect(historyError).toMatch(/no such table/);
+		expect(snapshot.models[0].daysTrending).toBeUndefined();
+		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe(snapshot.fetchedAt);
+	});
+
+	it("reuses avatars from the last snapshot instead of looking them up", async () => {
+		const known = "https://cdn-avatars.huggingface.co/known.png";
+		await env.TRENDING.put(
+			"latest",
+			JSON.stringify({ fetchedAt: "2026-01-01T00:00:00.000Z", models: [{ id: "LiquidAI/x", author: "LiquidAI", avatarUrl: known }] }),
+		);
+		const fetch = mockHuggingFace(trendingJson);
+		const { snapshot } = await refresh(env);
+		expect(snapshot.models[0]).toMatchObject({ author: "LiquidAI", avatarUrl: known });
+		const lookups = fetch.mock.calls.map(([input]) => String(input)).filter((u) => u.includes("/avatar"));
+		expect(lookups.some((u) => u.includes("LiquidAI"))).toBe(false);
+		expect(lookups.length).toBeGreaterThan(0);
+	});
+
+	it("doesn't overwrite a newer snapshot", async () => {
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt: "2999-01-01T00:00:00.000Z", models: [] }));
+		mockHuggingFace(trendingJson);
+		await refresh(env);
+		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe("2999-01-01T00:00:00.000Z");
+	});
+});
+
+describe("scheduled", () => {
+	const runCron = (now: number, cronEnv: Env = env) => {
+		const fetch = mockHuggingFace(trendingJson);
+		const run = handler.scheduled!(createScheduledController({ scheduledTime: now, cron: "0 */4 * * *" }), cronEnv);
+		return { fetch, run };
+	};
+	const lastScrapeAgo = (ms: number, models: object[] = []) =>
+		env.TRENDING.put("latest", JSON.stringify({ fetchedAt: new Date(Date.now() - ms).toISOString(), models }));
+	const scrapes = async () =>
+		(await env.DB.prepare("SELECT COUNT(DISTINCT fetched_at) AS n FROM snapshot_models").first<{ n: number }>())!.n;
+
+	it("skips a run soon after the last scrape", async () => {
+		await lastScrapeAgo(MIN_CRON_INTERVAL_MS - 60_000);
+		await runCron(Date.now()).run;
+		expect(await scrapes()).toBe(0);
+	});
+
+	it("scrapes when the last scrape is old enough, or there is none", async () => {
+		await runCron(Date.now()).run;
+		expect(await scrapes()).toBe(1);
+		await lastScrapeAgo(4 * MIN_CRON_INTERVAL_MS);
+		vi.restoreAllMocks();
+		await runCron(Date.now()).run;
+		expect(await scrapes()).toBe(2);
+	});
+
+	it("pings the health check after a good run and after a skipped one", async () => {
+		const ok = runCron(Date.now(), { ...env, HEALTHCHECK_URL });
+		await ok.run;
+		expect(pings(ok.fetch)).toEqual([HEALTHCHECK_URL]);
+		vi.restoreAllMocks();
+		const skipped = runCron(Date.now(), { ...env, HEALTHCHECK_URL });
+		await skipped.run;
+		expect(await scrapes()).toBe(1);
+		expect(pings(skipped.fetch)).toEqual([HEALTHCHECK_URL]);
+	});
+
+	it("doesn't clear a history failure when it skips a run", async () => {
+		// Published recently, but without badge stats because D1 failed
+		await lastScrapeAgo(60_000, [{ id: "o/a" }]);
+		const { fetch, run } = runCron(Date.now(), { ...env, HEALTHCHECK_URL });
+		await run;
+		expect(await scrapes()).toBe(0);
+		expect(pings(fetch)).toEqual([`${HEALTHCHECK_URL}/fail`]);
+	});
+
+	it("sends no ping without a health check URL", async () => {
+		const { fetch, run } = runCron(Date.now());
+		await run;
+		expect(pings(fetch)).toEqual([]);
+	});
+
+	it("doesn't fail a good run when the health check is down", async () => {
+		for (const failure of [() => new Response("down", { status: 500 }), () => Promise.reject(new Error("timeout"))]) {
+			vi.restoreAllMocks();
+			const fetch = mockHuggingFace(trendingJson);
+			const real = fetch.getMockImplementation()!;
+			fetch.mockImplementation(async (input, init) =>
+				String(input instanceof Request ? input.url : input).startsWith("https://hc.example") ? failure() : real(input, init),
+			);
+			await env.TRENDING.delete("latest");
+			const run = handler.scheduled!(
+				createScheduledController({ scheduledTime: Date.now(), cron: "0 */4 * * *" }),
+				{ ...env, HEALTHCHECK_URL },
+			);
+			await expect(run).resolves.toBeUndefined();
+		}
+	});
+
+	it("fails the run and pings /fail when history can't be saved", async () => {
+		const { fetch, run } = runCron(Date.now(), { ...env, DB: brokenDb, HEALTHCHECK_URL });
+		await expect(run).rejects.toThrow(/history failed: .*no such table/);
+		expect(pings(fetch)).toEqual([`${HEALTHCHECK_URL}/fail`]);
+		// The fresh list is still published
+		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.models).toHaveLength(5);
+	});
+
+	it("pings /fail when the scrape fails", async () => {
+		const fetch = mockHuggingFace([apiModel("a/b")]);
+		const run = handler.scheduled!(
+			createScheduledController({ scheduledTime: Date.now(), cron: "0 */4 * * *" }),
+			{ ...env, HEALTHCHECK_URL },
+		);
+		await expect(run).rejects.toThrow(/expected at least 5/);
+		expect(pings(fetch)).toEqual([`${HEALTHCHECK_URL}/fail`]);
+	});
+});
+
+describe("badges", () => {
+	const ids = (names: string[]) => names.map((n) => `o/${n}`);
+	const scrapeAt = async (iso: string, models: string[], hfIds: Record<string, string> = {}) => {
+		vi.useFakeTimers({ now: new Date(iso), toFake: ["Date"] });
+		vi.restoreAllMocks();
+		mockHuggingFace(models.map((id) => apiModel(id, hfIds[id] ? { _id: hfIds[id] } : {})));
+		return (await refresh(env)).snapshot;
+	};
+	const abcde = ids(["a", "b", "c", "d", "e"]);
+
+	it("doesn't mark anything new on the first day of history", async () => {
+		const snap = await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		expect(snap.models.some((m) => m.isNew)).toBe(false);
+	});
+
+	it("marks models first seen today as new, and counts distinct days", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		await scrapeAt("2026-10-05T12:00:00Z", abcde);
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		const byName = Object.fromEntries(snap.models.map((m) => [m.name, m]));
+		expect(byName.a).toMatchObject({ daysTrending: 2, isNew: false });
+		expect(byName.new).toMatchObject({ daysTrending: 1, isNew: true });
+		expect(snap.historyStart).toBe("2026-10-05");
+	});
+
+	it("keeps the NEW stamp on later scrapes the same day", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		await scrapeAt("2026-10-06T08:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		const snap = await scrapeAt("2026-10-06T12:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		expect(snap.models.find((m) => m.name === "new")).toMatchObject({ daysTrending: 1, isNew: true });
+	});
+
+	it("counts distinct days across a gap in trending", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		await scrapeAt("2026-10-06T08:00:00Z", ids(["b", "c", "d", "e", "f"]));
+		const snap = await scrapeAt("2026-10-07T08:00:00Z", abcde);
+		expect(snap.models.find((m) => m.name === "a")).toMatchObject({ daysTrending: 2, isNew: false });
+	});
+
+	it("doesn't mark models new after a day without scrapes", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		const snap = await scrapeAt("2026-10-07T08:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		expect(snap.models.some((m) => m.isNew)).toBe(false);
+	});
+
+	it("keeps one history row per model per day however often it scrapes", async () => {
+		for (const hour of ["08", "09", "10"]) await scrapeAt(`2026-10-05T${hour}:00:00Z`, abcde);
+		const { count } = (await env.DB.prepare("SELECT COUNT(*) AS count FROM model_days").first<{ count: number }>())!;
+		expect(count).toBe(5);
+	});
+
+	it("doesn't give a new model the history of an old one that had its name", async () => {
+		// o/a was renamed away; a different model (new Hugging Face id) now uses the name
+		await scrapeAt("2026-10-05T08:00:00Z", abcde, { "o/a": "hf-old" });
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", abcde, { "o/a": "hf-new" });
+		expect(snap.models.find((m) => m.name === "a")).toMatchObject({ daysTrending: 1, isNew: true });
+	});
+
+	it("matches by name when a model has no Hugging Face id", async () => {
+		// Without _id, hf_id falls back to the model id
+		await scrapeAt("2026-10-05T08:00:00Z", abcde, { "o/a": "o/a" });
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", ["O/A", "o/b", "o/c", "o/d", "o/e"], { "O/A": "hf-a" });
+		expect(snap.models[0]).toMatchObject({ daysTrending: 2, isNew: false });
+	});
+
+	it("follows a model through a casing change and a rename", async () => {
+		const hfIds = { "o/a": "hf-7", "o/renamed": "hf-7", "o/b": "hf-b", "O/B": "hf-b" };
+		await scrapeAt("2026-10-05T08:00:00Z", abcde, hfIds);
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", ["O/B", "o/renamed", "o/c", "o/d", "o/e"], hfIds);
+		const byName = Object.fromEntries(snap.models.map((m) => [m.name, m]));
+		expect(byName.B).toMatchObject({ daysTrending: 2, isNew: false });
+		expect(byName.renamed).toMatchObject({ daysTrending: 2, isNew: false });
+	});
+});
+
+describe("pingHealthcheck", () => {
+	it("posts the error to <url>/fail, without a doubled slash", async () => {
+		const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("OK"));
+		await pingHealthcheck(`${HEALTHCHECK_URL}/`, "boom");
+		const [url, init] = fetch.mock.calls[0];
+		expect(String(url)).toBe(`${HEALTHCHECK_URL}/fail`);
+		expect(init).toMatchObject({ method: "POST", body: "boom" });
+	});
+});
