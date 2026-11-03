@@ -2,22 +2,22 @@
 name: Trending Models
 description: Hugging Face trending printed as a two-colour trade-paper singles chart, with memory.
 colors:
-  chart-yellow: "#ffde17"
+  chart-cyan: "#20d4e6"
   stamp-pink: "#ff3d8b"
   ink: "#111"
   sheet: "#fff"
   muted: "#595959"
   rule: "#d4d4d4"
-  hover-wash: "#fff8cc"
+  hover-wash: "#e0f8fa"
   one-muted: "#b8b8b8"
   sheet-dark: "#161513"
-  chart-yellow-dark: "#e7c537"
+  chart-cyan-dark: "#2cc0cf"
   ink-dark: "#e8e4da"
   muted-dark: "#aaa69c"
   rule-dark: "#42403b"
-  hover-wash-dark: "#24210f"
+  hover-wash-dark: "#10292c"
   position-dark: "#b3afa5"
-  one-muted-dark: "#3d3616"
+  one-muted-dark: "#0a2427"
 typography:
   display:
     fontFamily: "Big Shoulders Display, Arial Narrow, sans-serif"
@@ -86,7 +86,7 @@ spacing:
   key-pad: "14px"
 components:
   masthead:
-    backgroundColor: "{colors.chart-yellow}"
+    backgroundColor: "{colors.chart-cyan}"
     textColor: "{colors.ink}"
     typography: "{typography.display}"
     rounded: "{rounded.none}"
@@ -114,7 +114,7 @@ components:
     rounded: "{rounded.none}"
     padding: "16px 14px"
   chart-row-one-dark:
-    backgroundColor: "{colors.chart-yellow-dark}"
+    backgroundColor: "{colors.chart-cyan-dark}"
     textColor: "{colors.ink}"
   stamp-new:
     backgroundColor: "{colors.stamp-pink}"
@@ -126,20 +126,20 @@ components:
 
 # Design System: Trending Models
 
-This design comes from the sibling project trending-repos (GitHub trending). This page keeps its system and changes only what the data needs.
+This design comes from the sibling project trending-repos (GitHub trending). This page keeps its system, but prints in cyan instead of yellow so the two charts read as a pair and are not confused. It changes only what the data and the colour need.
 
 ## Overview
 
 **Creative North Star: "The Trade-Paper Chart Sheet"**
 
-The page is a printed singles chart, not a list of cards. A yellow masthead band carries the title and the chart's own dateline and time; below it, a dense numbered sheet prints four columns per row: this chart's position, days on chart, the model, and its trending score. Two inks and one spot colour do all the work: chart yellow, ink black on a white sheet, and a hot pink reserved for NEW stamps. Hierarchy comes from condensed display numerals at very different sizes, heavy and hairline rules, and the reversed No. 1 row.
+The page is a printed singles chart, not a list of cards. A cyan masthead band carries the title and the chart's own dateline and time; below it, a dense numbered sheet prints four columns per row: this chart's position, days on chart, the model, and its trending score. Two inks and one spot colour do all the work: chart cyan, ink black on a white sheet, and a hot pink reserved for NEW stamps. Hierarchy comes from condensed display numerals at very different sizes, heavy and hairline rules, and the reversed No. 1 row.
 
-Density is the point. On wide screens the sheet prints two columns at chart density, one line of meta and one line of facts per row, so a full chart reads like a page of a trade paper. On phones it collapses to one column without losing the position, days-on and score columns. The system follows the operating system's light and dark preference; the dark sheet keeps the yellow band and prints No. 1 in yellow.
+Density is the point. On wide screens the sheet prints two columns at chart density, one line of meta and one line of facts per row, so a full chart reads like a page of a trade paper. On phones it collapses to one column without losing the position, days-on and score columns. The system follows the operating system's light and dark preference; the dark sheet keeps the cyan band and prints No. 1 in cyan.
 
 There is no client script. Motion is one gesture: the NEW stamp presses onto the sheet once on load.
 
 **Key Characteristics:**
-- Chart yellow masthead band; white sheet; ink #111; hot pink only for NEW.
+- Chart cyan masthead band; white sheet; ink #111; hot pink only for NEW.
 - Condensed Big Shoulders Display numerals for positions, scores, days on and the chart time; Archivo for all text.
 - Ruled, not boxed: hairline row rules, a 3px rule under column heads and over the footer, a 6px rule under the masthead.
 - Square corners everywhere; no shadows.
@@ -148,11 +148,11 @@ There is no client script. Motion is one gesture: the NEW stamp presses onto the
 
 ## Colors
 
-A two-colour trade-paper palette (yellow and ink) with one spot colour, on a white or near-black sheet.
+A two-colour trade-paper palette (cyan and ink) with one spot colour, on a white or near-black sheet.
 
 ### Primary
-- **Chart Yellow** (`chart-yellow`): the masthead band, the text-selection highlight, the light `theme-color`, the favicon, and the No. 1 score figure, all on the light sheet. The dark sheet uses Night Chart Yellow instead.
-- **Night Chart Yellow** (`chart-yellow-dark`): Chart Yellow under `prefers-color-scheme: dark`, for the masthead, the No. 1 row, the selection highlight and the dark `theme-color`. The favicon keeps Chart Yellow.
+- **Chart Cyan** (`chart-cyan`): the masthead band, the text-selection highlight, the light `theme-color`, the favicon, and the No. 1 score figure, all on the light sheet. The dark sheet uses Night Chart Cyan instead.
+- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 row, the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
 
 ### Secondary
 - **Stamp Pink** (`stamp-pink`): NEW stamps only, in the "Days on" column and once in the chart key as the legend sample. Text on it is ink.
@@ -162,22 +162,22 @@ A two-colour trade-paper palette (yellow and ink) with one spot colour, on a whi
 - **Sheet** (`sheet`): the page background in light mode, and the No. 1 row's text.
 - **Press Grey** (`muted`): secondary text: author meta line, "days" and "trending score" labels, the facts line, the chart key's prose, footer prose, the "–" no-history mark.
 - **Hairline** (`rule`): 1px row rules and the key strip's bottom rule; the avatar placeholder.
-- **Yellow Wash** (`hover-wash`): row hover background.
+- **Cyan Wash** (`hover-wash`): row hover background.
 - **No. 1 Grey** (`one-muted`): secondary text inside the reversed No. 1 row.
-- **Dark sheet set** (`sheet-dark`, `ink-dark`, `muted-dark`, `rule-dark`, `hover-wash-dark`, `one-muted-dark`): the same roles under `prefers-color-scheme: dark`. In dark mode the No. 1 row uses Night Chart Yellow as background with Ink text and Ink score, and `one-muted-dark` for its secondary text.
+- **Dark sheet set** (`sheet-dark`, `ink-dark`, `muted-dark`, `rule-dark`, `hover-wash-dark`, `one-muted-dark`): the same roles under `prefers-color-scheme: dark`. In dark mode the No. 1 row uses Night Chart Cyan as background with Ink text and Ink score, and `one-muted-dark` for its secondary text.
 - **Night Position Grey** (`position-dark`): the position numerals on the dark sheet (except No. 1). In light mode positions print in Ink.
 
 ### Dark Sheet Legibility
 The dark sheet is newsprint at night, not white on black. Pure white on near-black glares, and thin light strokes blur, so:
 - Ink is a warm off-white (`#e8e4da`, 14:1 on the sheet) on a lifted warm sheet (`#161513`). Do not push ink back to white or the sheet to black.
 - Text set in Archivo on the dark sheet prints at weight 450 instead of 400, and uses the platform's default font smoothing. Display numerals keep `antialiased`, so the heavy figures stay crisp. Dark type on light grounds (the masthead, the No. 1 row, the stale strip, NEW stamps) keeps the light-mode weight and smoothing.
-- Yellow steps down to `chart-yellow-dark` (`#e7c537`, OKLCH 0.83 / 0.155, against 0.90 / 0.18 for Chart Yellow). Full-strength yellow blocks on the near-black sheet are the brightest thing on the page by far, and they glare. Ink on it stays above 11:1, and `one-muted-dark` stays above 7:1. Do not push the dark yellow back to `#ffde17`.
+- Cyan steps down to `chart-cyan-dark` (`#2cc0cf`, OKLCH 0.74 / 0.118, against 0.80 / 0.132 for Chart Cyan). Full-strength cyan blocks on the near-black sheet are the brightest thing on the page by far, and they glare. Ink on it stays above 9:1, and `one-muted-dark` stays above 7:1. Do not push the dark cyan back to `#20d4e6`.
 - Position numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores stay full Ink, because they lead the row with the name.
 
 ### Named Rules
 **The Spot Colour Rule.** Pink means NEW and nothing else. If an element does not mean "first seen on trending today", it is not pink.
 
-**The Two-Ink Rule.** Everything else prints in yellow and ink. Author avatars are the only other colours, because they are data from Hugging Face, not palette.
+**The Two-Ink Rule.** Everything else prints in cyan and ink. Author avatars are the only other colours, because they are data from Hugging Face, not palette.
 
 ## Typography
 
@@ -235,7 +235,7 @@ The system is flat. There are no shadows. Depth comes from print devices: rule w
 ### Named Rules
 **The Rules, Not Boxes Rule.** Separate content with horizontal rules of graded weight. Do not use cards, borders on four sides, or shadows.
 
-**The Band Edge Rule.** In dark mode the 6px ink rule under the masthead does not print on the near-black sheet; the yellow band's own edge serves as the rule. Do not add a substitute rule colour to make it show.
+**The Band Edge Rule.** In dark mode the 6px ink rule under the masthead does not print on the near-black sheet; the cyan band's own edge serves as the rule. Do not add a substitute rule colour to make it show.
 
 ## Shapes
 
@@ -244,26 +244,26 @@ Square corners throughout (0px), including avatars, stamps and the No. 1 row. Th
 ## Components
 
 ### Masthead
-Chart yellow band with ink type, closed by a 6px ink rule (light mode). Title left, strapline and two-line description centre (max 46ch), dateline right: "Chart of Sun 1 Nov 2026" over the time in display numerals over "UTC · updated 2 hours ago". The dateline is omitted when there is no snapshot.
+Chart cyan band with ink type, closed by a 6px ink rule (light mode). Title left, strapline and two-line description centre (max 46ch), dateline right: "Chart of Sun 1 Nov 2026" over the time in display numerals over "UTC · updated 2 hours ago". The dateline is omitted when there is no snapshot.
 
 ### Chart Key
 See Layout. Bold ink figures inside muted prose; the NEW legend shows a static stamp sample (no press motion).
 
 ### Stale Warning
 
-When the snapshot is more than 12 hours old (three missed runs), a full-width strip prints between the masthead and the key: the sheet reversed (ink ground, sheet-coloured text), Archivo 600 at 14px, centred, `role="status"`. It is the one place the chart admits it is old, so it never uses yellow or pink.
+When the snapshot is more than 12 hours old (three missed runs), a full-width strip prints between the masthead and the key: the sheet reversed (ink ground, sheet-coloured text), Archivo 600 at 14px, centred, `role="status"`. It is the one place the chart admits it is old, so it never uses cyan or pink.
 
 ### Chart Row
 - **Columns:** position numeral, days on, model block (name, meta line, facts line), trending score.
 - **Meta line:** 16px square avatar, author, task (ink, 700), parameter count ("1.73B params"), compact likes, compact downloads (last 30 days). Compact figures carry the full figure in `title` and in screen-reader text.
 - **Facts line:** library, license, "gated" when access needs approval, and the creation date, joined by middle dots.
 - **Model link:** only the name links to the model page; its accessible name includes the author ("author / name"). The row has no link overlay, so `title` tooltips and text selection work. Hover tints the row and underlines the name.
-- **Hover:** yellow wash background and an underlined name.
+- **Hover:** cyan wash background and an underlined name.
 - **Focus:** the row draws a 2px ink outline inset 2px when its name link has focus. Other links use a 2px currentColor outline, offset 2px.
 - **Degrades quietly:** a missing task, parameter count or fact removes its element. A missing avatar prints as a blank hairline-grey square, so the author still lines up.
 
 ### No. 1 Row
-Prints reversed. Light mode: ink background, white text, score in chart yellow. Dark mode: inverts to a Night Chart Yellow (`chart-yellow-dark`) row with ink text and ink score. Larger position (76px), name (23px) and score (40px). Its focus outline uses the score colour, inset 4px.
+Prints reversed. Light mode: ink background, white text, score in chart cyan. Dark mode: inverts to a Night Chart Cyan (`chart-cyan-dark`) row with ink text and ink score. Larger position (76px), name (23px) and score (40px). Its focus outline uses the score colour, inset 4px.
 
 ### Days On Cell
 - **Count:** display numeral over a small "day"/"days" label (screen readers hear "Trended on 6 days").
@@ -287,7 +287,7 @@ A 3px ink rule over muted small text: the data credit to huggingface.co/models, 
 - **Do** keep pink for NEW stamps only.
 - **Do** separate rows with 1px hairlines and heads with a 3px ink rule.
 - **Do** keep the two-column chart in DOM order as two ordered lists, the second with `start`.
-- **Do** print No. 1 reversed: ink with a yellow score on the light sheet, yellow with an ink score on the dark sheet.
+- **Do** print No. 1 reversed: ink with a cyan score on the light sheet, cyan with an ink score on the dark sheet.
 - **Do** hide a meta item whole when it does not fit the one-line desktop meta row.
 - **Do** give every compact or visual-only figure a full screen-reader equivalent.
 - **Do** disable the stamp press under reduced motion.

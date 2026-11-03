@@ -13,7 +13,7 @@ const TITLE = "Trending Models: Hugging Face trending, with memory";
 const DESCRIPTION =
 	"The models trending on Hugging Face right now, charted every four hours with how many days each has trended.";
 // public/og.png, made from scripts/og-image.html
-const OG_IMAGE_ALT = "Trending Models, printed as a yellow and black singles chart with positions, days on and trending scores.";
+const OG_IMAGE_ALT = "Trending Models, printed as a cyan and black singles chart with positions, days on and trending scores.";
 
 // A run this long prints heavier in "Days on", so staying power reads at a glance
 const LONG_RUN = 7;
@@ -65,8 +65,8 @@ export function renderPage(snapshot: Snapshot | null, now = new Date()): string 
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="${OG_IMAGE_ALT}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#ffde17" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#e7c537" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#20d4e6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2cc0cf" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(FAVICON)}">
 <link rel="preload" href="/fonts/big-shoulders-display-v24-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/archivo-v25-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -214,8 +214,8 @@ export function timeAgo(iso: string, now: Date): string {
 	return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-// A yellow chart sheet with ruled rows and a reversed No. 1 row
-const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#ffde17"/><rect x="5" y="7" width="22" height="6" fill="#111"/><rect x="5" y="16" width="22" height="2.5" fill="#111"/><rect x="5" y="21.5" width="15" height="2.5" fill="#111"/></svg>`;
+// A cyan chart sheet with ruled rows and a reversed No. 1 row
+const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#20d4e6"/><rect x="5" y="7" width="22" height="6" fill="#111"/><rect x="5" y="16" width="22" height="2.5" fill="#111"/><rect x="5" y="21.5" width="15" height="2.5" fill="#111"/></svg>`;
 
 // Unicode ranges from Google Fonts' latin and latin-ext subsets. Font files are in public/fonts
 const LATIN =
@@ -232,18 +232,18 @@ ${fontFace("Big Shoulders Display", "big-shoulders-display-v24-latin.woff2", "80
 ${fontFace("Archivo", "archivo-v25-latin.woff2", "400 800", LATIN)}
 ${fontFace("Archivo", "archivo-v25-latin-ext.woff2", "400 800", LATIN_EXT)}
 :root {
-	--yellow: #ffde17;
+	--cyan: #20d4e6;
 	--pink: #ff3d8b;
 	--black: #111;
 	--sheet: #fff;
 	--ink: #111;
 	--muted: #595959;
 	--rule: #d4d4d4;
-	--hover: #fff8cc;
+	--hover: #e0f8fa;
 	--one-bg: #111;
 	--one-fg: #fff;
 	--one-muted: #b8b8b8;
-	--one-gain: #ffde17;
+	--one-gain: #20d4e6;
 	--pos: var(--ink);
 	--display: "Big Shoulders Display", "Arial Narrow", sans-serif;
 	--text: "Archivo", system-ui, sans-serif;
@@ -253,17 +253,17 @@ ${fontFace("Archivo", "archivo-v25-latin-ext.woff2", "400 800", LATIN_EXT)}
 	:root {
 		/* A warm off-white on a lifted sheet: pure white on black glares and blurs */
 		--sheet: #161513;
-		/* Full-strength yellow glares as a big block on a dark sheet, so it prints a step deeper */
-		--yellow: #e7c537;
+		/* Full-strength cyan glares as a big block on a dark sheet, so it prints a step deeper */
+		--cyan: #2cc0cf;
 		--ink: #e8e4da;
 		--muted: #aaa69c;
 		--rule: #42403b;
-		--hover: #24210f;
+		--hover: #10292c;
 		/* Positions step back so the model name and the score lead the row */
 		--pos: #b3afa5;
-		--one-bg: var(--yellow);
+		--one-bg: var(--cyan);
 		--one-fg: #111;
-		--one-muted: #3d3616;
+		--one-muted: #0a2427;
 		--one-gain: #111;
 		color-scheme: dark;
 	}
@@ -287,7 +287,7 @@ body {
 	.mast, .row.one { font-weight: 400; }
 	.mast, .row.one, .stale, .stamp { -webkit-font-smoothing: antialiased; }
 }
-::selection { background: var(--yellow); color: var(--black); }
+::selection { background: var(--cyan); color: var(--black); }
 p { margin: 0; }
 a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
@@ -300,8 +300,8 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 	white-space: nowrap;
 }
 
-/* Masthead: the yellow band over a heavy rule */
-.mast { background: var(--yellow); color: var(--black); border-bottom: 6px solid var(--black); }
+/* Masthead: the cyan band over a heavy rule */
+.mast { background: var(--cyan); color: var(--black); border-bottom: 6px solid var(--black); }
 .mast-in {
 	max-width: 1520px;
 	margin: 0 auto;
