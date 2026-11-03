@@ -262,13 +262,22 @@ describe("link previews", () => {
 });
 
 describe("footer", () => {
-	it("links to the JSON, the source and the author's blog", () => {
+	it("links to the GitHub trending chart, the JSON, the source and the author's blog", () => {
 		for (const html of [renderPage(null), page(model())]) {
 			const footer = html.match(/<footer>[\s\S]*<\/footer>/)?.[0];
 			expect(footer, "page has no <footer>").toBeDefined();
+			expect(footer).toContain(`<a href="https://trending.ddewhurst.com/">GitHub trending</a>`);
 			expect(footer).toContain(`<a href="/api/trending">JSON</a>`);
 			expect(footer).toContain(`<a href="https://github.com/danjdewhurst/trending-models">Source</a>`);
 			expect(footer).toContain(`<a href="https://ddewhurst.com" rel="author">ddewhurst.com</a>`);
+			// The sibling chart comes first, then this site's own links
+			expect([...footer!.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual([
+				"https://huggingface.co/models",
+				"https://trending.ddewhurst.com/",
+				"/api/trending",
+				"https://github.com/danjdewhurst/trending-models",
+				"https://ddewhurst.com",
+			]);
 		}
 	});
 });
