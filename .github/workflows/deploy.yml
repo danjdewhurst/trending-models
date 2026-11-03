@@ -42,7 +42,8 @@ jobs:
 
       - run: npm test
 
-      # Only this step sees the Cloudflare token, not npm ci or the tests
+      # Only this step gets the Cloudflare token in its environment. It still runs wrangler
+      # from node_modules, so the lockfile's integrity hashes are what keep that code honest
       - name: Apply D1 migrations and deploy
         run: npm run deploy
         env:

@@ -8,10 +8,12 @@ export const HEALTHCHECK_URL = "https://hc.example/ping/abc";
 export const AVATAR = "https://cdn-avatars.huggingface.co/v1/production/uploads/1/a.png";
 
 // Stubs fetch: the trending list returns `models`, an organization avatar lookup returns
-// `avatar(author)`, a user avatar lookup returns 404, and pings to HEALTHCHECK_URL return 200
+// `avatar(author)`, a user avatar lookup returns `user(author)` (404 by default), and pings
+// to HEALTHCHECK_URL return 200
 export function mockHuggingFace(
 	models: unknown[] | Response,
 	avatar: (author: string) => Response = () => Response.json({ avatarUrl: AVATAR }),
+	user: (author: string) => Response = () => new Response("Not found", { status: 404 }),
 ) {
 	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 		const url = new URL(input instanceof Request ? input.url : String(input));
@@ -20,9 +22,8 @@ export function mockHuggingFace(
 		}
 		const org = url.pathname.match(/^\/api\/organizations\/([^/]+)\/avatar$/);
 		if (url.hostname === "huggingface.co" && org) return avatar(decodeURIComponent(org[1]));
-		if (url.hostname === "huggingface.co" && /^\/api\/users\/[^/]+\/avatar$/.test(url.pathname)) {
-			return new Response("Not found", { status: 404 });
-		}
+		const usr = url.pathname.match(/^\/api\/users\/([^/]+)\/avatar$/);
+		if (url.hostname === "huggingface.co" && usr) return user(decodeURIComponent(usr[1]));
 		if (url.hostname === "hc.example") return new Response("OK");
 		throw new Error(`unexpected fetch ${url}`);
 	});

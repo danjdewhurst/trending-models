@@ -22,7 +22,11 @@ export async function refresh(env: Env): Promise<RefreshResult> {
 	// Throwing keeps the old data in KV and makes the failure show up in logs and /__refresh
 	checkScrape(fetched.length, fetched.filter((m) => m.trendingScore > 0).length);
 
-	const models = await addAvatars(fetched, token);
+	// Avatars rarely change, so reuse the ones the last snapshot found
+	const previous = await env.TRENDING.get<Snapshot>(KEY, "json");
+	const known = new Map<string, string>();
+	for (const m of previous?.models ?? []) if (m.author && m.avatarUrl) known.set(m.author, m.avatarUrl);
+	const models = await addAvatars(fetched, token, known);
 	const snapshot: Snapshot = { fetchedAt: new Date().toISOString(), models };
 
 	// History is a bonus: if D1 fails, still publish the fresh list without badges,

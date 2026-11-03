@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addAvatars, fetchTrending, LIMIT, toModel, TRENDING_URL } from "../src/huggingface";
+import { addAvatars, fetchTrending, MAX_AVATAR_LOOKUPS, toModel } from "../src/huggingface";
 import { apiModel, AVATAR, mockHuggingFace, trendingJson } from "./helpers";
 
 afterEach(() => vi.restoreAllMocks());
@@ -37,11 +37,26 @@ describe("fetchTrending", () => {
 		const fetch = mockHuggingFace(trendingJson);
 		await fetchTrending("hf_token");
 		const [url, init] = fetch.mock.calls[0];
-		const params = new URL(String(url)).searchParams;
-		expect(String(url)).toBe(TRENDING_URL);
-		expect(params.get("sort")).toBe("trendingScore");
-		expect(params.get("limit")).toBe(String(LIMIT));
-		expect(params.getAll("expand[]")).toEqual(expect.arrayContaining(["trendingScore", "likes", "safetensors", "tags"]));
+		const { origin, pathname, searchParams } = new URL(String(url));
+		expect(`${origin}${pathname}`).toBe("https://huggingface.co/api/models");
+		expect(searchParams.get("sort")).toBe("trendingScore");
+		expect(searchParams.get("direction")).toBe("-1");
+		expect(searchParams.get("limit")).toBe("30");
+		expect(searchParams.getAll("expand[]").sort()).toEqual(
+			[
+				"author",
+				"createdAt",
+				"downloads",
+				"gated",
+				"gguf",
+				"library_name",
+				"likes",
+				"pipeline_tag",
+				"safetensors",
+				"tags",
+				"trendingScore",
+			].sort(),
+		);
 		expect((init?.headers as Record<string, string>).authorization).toBe("Bearer hf_token");
 	});
 
@@ -57,6 +72,9 @@ describe("fetchTrending", () => {
 			apiModel("O/A"),
 			apiModel("o/../x"),
 			apiModel("../x"),
+			apiModel("o/.."),
+			apiModel("o/.x"),
+			apiModel("-o/x"),
 			apiModel(`o/"><script>`),
 			{ id: 42 },
 			null,
@@ -83,6 +101,9 @@ describe("toModel", () => {
 			url: "https://huggingface.co/gpt2",
 		});
 		expect(toModel(apiModel("gpt2"))?.author).toBeNull();
+		// The author field isn't part of the checked id, so it gets its own check
+		expect(toModel(apiModel("gpt2", { author: ".." }))?.author).toBeNull();
+		expect(toModel(apiModel("gpt2", { author: "a/b" }))?.author).toBeNull();
 	});
 
 	it("falls back to GGUF for the parameter count, and to null", () => {
@@ -124,6 +145,32 @@ describe("addAvatars", () => {
 		expect(urls).toEqual(["/api/organizations/o/avatar", "/api/organizations/p/avatar", "/api/users/p/avatar"]);
 	});
 
+	it("finds a user's avatar on the user route", async () => {
+		const userAvatar = "https://cdn-avatars.huggingface.co/v1/production/uploads/2/u.png";
+		mockHuggingFace(
+			[],
+			() => new Response("Not found", { status: 404 }),
+			(author) => (author === "p" ? Response.json({ avatarUrl: userAvatar }) : new Response("Not found", { status: 404 })),
+		);
+		expect((await addAvatars(models())).map((m) => m.avatarUrl)).toEqual([null, null, userAvatar]);
+	});
+
+	it("reuses known avatars without a lookup", async () => {
+		const fetch = mockHuggingFace([]);
+		const out = await addAvatars(models(), undefined, new Map([["o", "https://cdn-avatars.huggingface.co/known.png"]]));
+		expect(out.map((m) => m.avatarUrl)).toEqual(["https://cdn-avatars.huggingface.co/known.png", "https://cdn-avatars.huggingface.co/known.png", AVATAR]);
+		expect(fetch.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(["/api/organizations/p/avatar"]);
+	});
+
+	it("looks up at most MAX_AVATAR_LOOKUPS authors in one refresh", async () => {
+		const fetch = mockHuggingFace([]);
+		const many = Array.from({ length: MAX_AVATAR_LOOKUPS + 5 }, (_, i) => toModel(apiModel(`a${i}/m`))!);
+		const out = await addAvatars(many);
+		expect(fetch.mock.calls).toHaveLength(MAX_AVATAR_LOOKUPS);
+		expect(out.filter((m) => m.avatarUrl === AVATAR)).toHaveLength(MAX_AVATAR_LOOKUPS);
+		expect(out.slice(MAX_AVATAR_LOOKUPS).every((m) => m.avatarUrl === undefined)).toBe(true);
+	});
+
 	it("keeps only avatars on Hugging Face's avatar host", async () => {
 		mockHuggingFace([], () => Response.json({ avatarUrl: "https://evil.example/a.png" }));
 		expect((await addAvatars(models())).map((m) => m.avatarUrl)).toEqual([null, null, null]);
@@ -134,8 +181,8 @@ describe("addAvatars", () => {
 		const many = Array.from({ length: 20 }, (_, i) => toModel(apiModel(`a${i}/m`))!);
 		const out = await addAvatars(many);
 		expect(out).toHaveLength(20);
-		// The first round of parallel lookups is already in flight; nothing starts after it
-		expect(fetch.mock.calls.length).toBeLessThanOrEqual(6);
+		// The first round of 6 parallel lookups is already in flight; nothing starts after it
+		expect(fetch.mock.calls).toHaveLength(6);
 		expect(out.every((m) => !m.avatarUrl)).toBe(true);
 	});
 

@@ -48,6 +48,12 @@ describe("renderPage", () => {
 		expect(html).not.toMatch(/<[biu]>/);
 	});
 
+	it("escapes the avatar URL inside its attribute", () => {
+		const html = page(model({ avatarUrl: `https://cdn-avatars.huggingface.co/x" onerror="alert(1)` }));
+		expect(html).not.toContain(`" onerror=`);
+		expect(html).toContain(`src="https://cdn-avatars.huggingface.co/x&#34; onerror=&#34;alert(1)"`);
+	});
+
 	it("only puts avatars from Hugging Face's avatar host into <img>", () => {
 		expect(page(model())).toContain(`<img class="avatar" src="https://cdn-avatars.huggingface.co/`);
 		for (const avatarUrl of ["https://evil.example/a.png", "javascript:alert(1)", null, undefined]) {

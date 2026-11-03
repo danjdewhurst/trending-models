@@ -47,6 +47,35 @@ describe("routes", () => {
 		expect((await get("/api/trending")).headers.get("cache-control")).toBe("public, max-age=60");
 	});
 
+	it("allows images only from Hugging Face's avatar host, and no scripts", async () => {
+		const csp = (await get("/")).headers.get("content-security-policy")!;
+		expect(csp).toMatch(/img-src https:\/\/cdn-avatars\.huggingface\.co data:;/);
+		expect(csp).not.toContain("script-src");
+	});
+
+	it("sends nosniff on JSON and error replies too", async () => {
+		for (const res of [await get("/api/trending"), await get("/nope"), await get("/", { method: "POST" }), await get("/__refresh", { method: "POST" })]) {
+			expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		}
+	});
+
+	it("keeps the JSON ETag while the page ETag follows the age, without spaces", async () => {
+		const fetchedAt = "2026-10-05T00:00:00.000Z";
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt, models: [] }));
+		const at = async (minutes: number) => {
+			vi.useFakeTimers({ now: Date.parse(fetchedAt) + minutes * 60_000, toFake: ["Date"] });
+			return { page: (await get("/")).headers.get("etag")!, api: (await get("/api/trending")).headers.get("etag")! };
+		};
+		const early = await at(5);
+		const later = await at(30);
+		expect(later.api).toBe(early.api);
+		expect(later.page).not.toBe(early.page);
+		// RFC 9110: an entity tag is "..." with no spaces inside
+		for (const tag of [early.page, later.page, early.api]) expect(tag).toMatch(/^"[^\s"]+"$/);
+		const res = await get("/api/trending", { headers: { "if-none-match": early.api } });
+		expect(res.status).toBe(304);
+	});
+
 	it("answers a matching If-None-Match with 304", async () => {
 		const etag = (await get("/api/trending")).headers.get("etag")!;
 		const res = await get("/api/trending", { headers: { "if-none-match": etag } });
@@ -93,6 +122,15 @@ describe("routes", () => {
 	it("requires the refresh key", async () => {
 		const res = await get("/__refresh", { method: "POST", headers: { authorization: "Bearer wrong" } });
 		expect(res.status).toBe(401);
+		expect((await get("/__refresh", { method: "POST" })).status).toBe(401);
+	});
+
+	it("refuses every refresh when no key is configured", async () => {
+		for (const authorization of ["Bearer ", "Bearer", ""]) {
+			const req = new Request("https://example.com/__refresh", { method: "POST", headers: { authorization } });
+			const res = await handler.fetch!(req as Request<unknown, IncomingRequestCfProperties>, { ...env, REFRESH_KEY: "" });
+			expect(res.status).toBe(401);
+		}
 	});
 });
 
@@ -162,6 +200,20 @@ describe("refresh", () => {
 		expect(historyError).toMatch(/no such table/);
 		expect(snapshot.models[0].daysTrending).toBeUndefined();
 		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe(snapshot.fetchedAt);
+	});
+
+	it("reuses avatars from the last snapshot instead of looking them up", async () => {
+		const known = "https://cdn-avatars.huggingface.co/known.png";
+		await env.TRENDING.put(
+			"latest",
+			JSON.stringify({ fetchedAt: "2026-01-01T00:00:00.000Z", models: [{ id: "LiquidAI/x", author: "LiquidAI", avatarUrl: known }] }),
+		);
+		const fetch = mockHuggingFace(trendingJson);
+		const { snapshot } = await refresh(env);
+		expect(snapshot.models[0]).toMatchObject({ author: "LiquidAI", avatarUrl: known });
+		const lookups = fetch.mock.calls.map(([input]) => String(input)).filter((u) => u.includes("/avatar"));
+		expect(lookups.some((u) => u.includes("LiquidAI"))).toBe(false);
+		expect(lookups.length).toBeGreaterThan(0);
 	});
 
 	it("doesn't overwrite a newer snapshot", async () => {
@@ -285,6 +337,20 @@ describe("badges", () => {
 		expect(snap.historyStart).toBe("2026-10-05");
 	});
 
+	it("keeps the NEW stamp on later scrapes the same day", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		await scrapeAt("2026-10-06T08:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		const snap = await scrapeAt("2026-10-06T12:00:00Z", ids(["a", "b", "c", "d", "new"]));
+		expect(snap.models.find((m) => m.name === "new")).toMatchObject({ daysTrending: 1, isNew: true });
+	});
+
+	it("counts distinct days across a gap in trending", async () => {
+		await scrapeAt("2026-10-05T08:00:00Z", abcde);
+		await scrapeAt("2026-10-06T08:00:00Z", ids(["b", "c", "d", "e", "f"]));
+		const snap = await scrapeAt("2026-10-07T08:00:00Z", abcde);
+		expect(snap.models.find((m) => m.name === "a")).toMatchObject({ daysTrending: 2, isNew: false });
+	});
+
 	it("doesn't mark models new after a day without scrapes", async () => {
 		await scrapeAt("2026-10-05T08:00:00Z", abcde);
 		const snap = await scrapeAt("2026-10-07T08:00:00Z", ids(["a", "b", "c", "d", "new"]));
@@ -297,8 +363,22 @@ describe("badges", () => {
 		expect(count).toBe(5);
 	});
 
+	it("doesn't give a new model the history of an old one that had its name", async () => {
+		// o/a was renamed away; a different model (new Hugging Face id) now uses the name
+		await scrapeAt("2026-10-05T08:00:00Z", abcde, { "o/a": "hf-old" });
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", abcde, { "o/a": "hf-new" });
+		expect(snap.models.find((m) => m.name === "a")).toMatchObject({ daysTrending: 1, isNew: true });
+	});
+
+	it("matches by name when a model has no Hugging Face id", async () => {
+		// Without _id, hf_id falls back to the model id
+		await scrapeAt("2026-10-05T08:00:00Z", abcde, { "o/a": "o/a" });
+		const snap = await scrapeAt("2026-10-06T08:00:00Z", ["O/A", "o/b", "o/c", "o/d", "o/e"], { "O/A": "hf-a" });
+		expect(snap.models[0]).toMatchObject({ daysTrending: 2, isNew: false });
+	});
+
 	it("follows a model through a casing change and a rename", async () => {
-		const hfIds = { "o/a": "hf-7", "o/renamed": "hf-7", "o/b": "hf-b", "O/B": "hf-b-new" };
+		const hfIds = { "o/a": "hf-7", "o/renamed": "hf-7", "o/b": "hf-b", "O/B": "hf-b" };
 		await scrapeAt("2026-10-05T08:00:00Z", abcde, hfIds);
 		const snap = await scrapeAt("2026-10-06T08:00:00Z", ["O/B", "o/renamed", "o/c", "o/d", "o/e"], hfIds);
 		const byName = Object.fromEntries(snap.models.map((m) => [m.name, m]));

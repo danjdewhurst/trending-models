@@ -7,7 +7,8 @@ export async function saveSnapshot(db: D1Database, snapshot: Snapshot): Promise<
 			(fetched_at, rank, model_id, hf_id, task, library, license, params, likes, downloads, trending_score)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	);
-	// A model renamed later the same day keeps its first row for that day
+	// Keyed by name, so a model renamed during a day gets a row under each name. Stats count
+	// distinct days, so that day still counts once
 	const markDay = db.prepare(`INSERT INTO model_days (day, model_id, hf_id) VALUES (?, ?, ?) ON CONFLICT DO NOTHING`);
 	const day = snapshot.fetchedAt.slice(0, 10);
 	await db.batch([
@@ -46,7 +47,9 @@ type StatsRow = { rank: number; first_seen: string; days: number };
 
 // History for the models in the scrape saved at `fetchedAt`, read from model_days so the cost
 // grows with days trending, not with scrapes. A past day counts as the same model if its
-// Hugging Face id matches (survives renames) or its "author/name" matches ignoring case.
+// Hugging Face id matches (survives renames). A match on "author/name" (ignoring case) counts
+// only when one side has no real Hugging Face id (hf_id fell back to the name), so a new model
+// that reuses an old name doesn't inherit the old model's history.
 export async function getTrendingStats(db: D1Database, fetchedAt: string): Promise<TrendingStats> {
 	const today = fetchedAt.slice(0, 10);
 	const yesterday = new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10);
@@ -61,7 +64,8 @@ export async function getTrendingStats(db: D1Database, fetchedAt: string): Promi
 				JOIN model_days h ON h.rowid IN (
 					SELECT rowid FROM model_days WHERE hf_id = c.hf_id
 					UNION
-					SELECT rowid FROM model_days WHERE model_id = c.model_id
+					SELECT rowid FROM model_days
+					WHERE model_id = c.model_id AND (c.hf_id = c.model_id OR hf_id = model_id)
 				)
 				WHERE c.fetched_at = ?
 				GROUP BY c.rank`,

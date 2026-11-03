@@ -29,6 +29,11 @@ const AVATAR_ORIGIN = "https://cdn-avatars.huggingface.co/";
 // Repo ids are "author/name", or a bare name for a few early models. Each part starts with a
 // letter, digit or underscore, so ".." can't turn the link into another path
 const MODEL_ID = /^\w[\w.-]*(?:\/\w[\w.-]*)?$/;
+// The author of a bare id comes from its own field, so it gets the same check
+const AUTHOR = /^\w[\w.-]*$/;
+// Each author costs one or two subrequests. Workers Free allows 50 per invocation, so a
+// refresh looks up at most this many and reuses avatars from the last snapshot
+export const MAX_AVATAR_LOOKUPS = 20;
 
 function headers(token: string | undefined, accept: string): Record<string, string> {
 	const h: Record<string, string> = { "user-agent": USER_AGENT, accept };
@@ -62,7 +67,8 @@ export function toModel(item: unknown): Model | null {
 	const m = item as ApiModel;
 	if (typeof m.id !== "string" || !MODEL_ID.test(m.id)) return null;
 	const slash = m.id.indexOf("/");
-	const author = slash > 0 ? m.id.slice(0, slash) : str(m.author);
+	const fieldAuthor = str(m.author);
+	const author = slash > 0 ? m.id.slice(0, slash) : fieldAuthor && AUTHOR.test(fieldAuthor) ? fieldAuthor : null;
 	const tags = Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === "string") : [];
 	const license = tags.find((t) => t.startsWith("license:"))?.slice("license:".length) || null;
 	return {
@@ -107,13 +113,15 @@ function num(v: unknown): number {
 	return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-// Adds each author's avatar. An author is an organization or a user, and the API has a
-// separate route for each, so a 404 from the first means try the second. A failed lookup
-// leaves that author without an avatar. Once the API says we're rate limited, the remaining
-// lookups are skipped.
-export async function addAvatars(models: Model[], token?: string): Promise<Model[]> {
-	const authors = [...new Set(models.map((m) => m.author).filter((a): a is string => a !== null))];
-	const avatars = new Map<string, string | null>();
+// Adds each author's avatar. `known` holds avatars from the last snapshot, which are reused
+// without a lookup. An author is an organization or a user, and the API has a separate route
+// for each, so a 404 from the first means try the second. A failed lookup leaves that author
+// without an avatar. Once the API says we're rate limited, the remaining lookups are skipped.
+export async function addAvatars(models: Model[], token?: string, known = new Map<string, string>()): Promise<Model[]> {
+	const avatars = new Map<string, string | null>(known);
+	const unknown = [...new Set(models.map((m) => m.author).filter((a): a is string => a !== null && !known.has(a)))];
+	const authors = unknown.slice(0, MAX_AVATAR_LOOKUPS);
+	if (unknown.length > authors.length) console.warn(`avatars: ${unknown.length - authors.length} authors over the lookup cap`);
 	let next = 0;
 	let rateLimited = false;
 	let skipped = 0;

@@ -7,6 +7,8 @@ import type { Snapshot } from "./types";
 // The main module exports only the handler: workerd rejects other exports that aren't
 // entrypoints, so helpers live in their own modules.
 
+// Sent on every Worker response; the page adds SECURITY_HEADERS on top
+const NOSNIFF = { "x-content-type-options": "nosniff" };
 const SECURITY_HEADERS = {
 	"content-security-policy":
 		"default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; " +
@@ -18,7 +20,7 @@ const SECURITY_HEADERS = {
 const CACHE_CONTROL = "public, max-age=60";
 
 function methodNotAllowed(allow: string): Response {
-	return new Response("Method not allowed", { status: 405, headers: { allow } });
+	return new Response("Method not allowed", { status: 405, headers: { ...NOSNIFF, allow } });
 }
 
 export default {
@@ -29,23 +31,26 @@ export default {
 		if (pathname === "/__refresh") {
 			if (request.method !== "POST") return methodNotAllowed("POST");
 			if (!(await authorized(request, env.REFRESH_KEY))) {
-				return new Response("Unauthorized", { status: 401 });
+				return new Response("Unauthorized", { status: 401, headers: NOSNIFF });
 			}
 			try {
 				const { snapshot, historyError } = await refresh(env);
-				return Response.json({
-					fetchedAt: snapshot.fetchedAt,
-					models: snapshot.models.length,
-					history: historyError === null ? "ok" : `failed: ${historyError}`,
-				});
+				return Response.json(
+					{
+						fetchedAt: snapshot.fetchedAt,
+						models: snapshot.models.length,
+						history: historyError === null ? "ok" : `failed: ${historyError}`,
+					},
+					{ headers: NOSNIFF },
+				);
 			} catch (err) {
 				console.error("refresh:", err);
-				return Response.json({ error: String(err) }, { status: 502 });
+				return Response.json({ error: String(err) }, { status: 502, headers: NOSNIFF });
 			}
 		}
 
 		if (pathname !== "/" && pathname !== "/api/trending") {
-			return new Response("Not found", { status: 404 });
+			return new Response("Not found", { status: 404, headers: NOSNIFF });
 		}
 		if (request.method !== "GET" && request.method !== "HEAD") return methodNotAllowed("GET, HEAD");
 
@@ -54,9 +59,12 @@ export default {
 		// The page shows "updated N min ago" and maybe a stale notice, so its ETag changes with them
 		const version = snapshot?.fetchedAt ?? "empty";
 		const now = new Date();
-		const pageState = snapshot ? `-${timeAgo(snapshot.fetchedAt, now)}${isStale(snapshot.fetchedAt, now) ? "-stale" : ""}` : "";
+		// An entity tag can't hold spaces, so "5 min ago" goes in as "5-min-ago"
+		const pageState = snapshot
+			? `-${timeAgo(snapshot.fetchedAt, now).replace(/ /g, "-")}${isStale(snapshot.fetchedAt, now) ? "-stale" : ""}`
+			: "";
 		const etag = pathname === "/" ? `"${version}${pageState}"` : `"${version}"`;
-		const headers: Record<string, string> = { "cache-control": CACHE_CONTROL, etag };
+		const headers: Record<string, string> = { ...NOSNIFF, "cache-control": CACHE_CONTROL, etag };
 		if (snapshot) headers["last-modified"] = new Date(snapshot.fetchedAt).toUTCString();
 
 		if (etagMatches(request.headers.get("if-none-match"), etag)) {
