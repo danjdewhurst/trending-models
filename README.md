@@ -4,6 +4,7 @@
 
 A Cloudflare Worker that reads [Hugging Face trending](https://huggingface.co/models) every 4 hours and tracks how many days each model has trended.
 
+[![Live site](https://img.shields.io/badge/live-models.ddewhurst.com-f38020?logo=cloudflare&logoColor=white)](https://models.ddewhurst.com)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?logo=cloudflareworkers&logoColor=white)](https://workers.cloudflare.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -20,7 +21,7 @@ A sibling of [trending-repos](https://github.com/forjd/trending-repos), which do
 - Shows each model's task, parameter count, likes, downloads, library, license and creation date, and looks up each author's avatar.
 - Stores every refresh in D1, so each model can carry a **New today** or **Trended on N days** badge. Hugging Face's internal model id survives renames, so a renamed model keeps its history.
 - Renders the page from a single KV read, with ETags and caching. The page has no client-side JavaScript and follows your system's light or dark mode.
-- Serves the same snapshot as JSON at `/api/trending`.
+- Serves the same snapshot as JSON at [`/api/trending`](https://models.ddewhurst.com/api/trending).
 - Keeps the previous snapshot if the API fails, or returns fewer than 5 models or no trending scores.
 - Shows a notice on the page when the data is more than 12 hours old, and can ping a [Healthchecks.io](https://healthchecks.io) check after each cron run.
 
@@ -77,7 +78,7 @@ HEALTHCHECK_URL=https://hc-ping.com/...   # optional
 
 1. Create a KV namespace and a D1 database, and put their ids in `wrangler.jsonc` in place of the zero placeholders:
    ```bash
-   npx wrangler kv namespace create TRENDING
+   npx wrangler kv namespace create trending-models
    npx wrangler d1 create trending-models
    ```
 2. Change or remove the custom domain in `wrangler.jsonc` (`routes`) and `SITE_URL` in `src/render.ts`.

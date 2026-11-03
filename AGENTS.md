@@ -2,9 +2,9 @@
 
 A Cloudflare Worker that reads the Hugging Face trending model list every 4 hours and serves it as a styled page. It is a sibling of `forjd/trending-repos` (GitHub trending, `~/Projects/trending-repos`) and shares its structure and design.
 
-- **Planned domain:** https://models.ddewhurst.com (set in `wrangler.jsonc` and `SITE_URL` in `src/render.ts`)
+- **Live:** https://models.ddewhurst.com (also https://trending-models.danjdewhurst.workers.dev). The domain is set in `wrangler.jsonc` and `SITE_URL` in `src/render.ts`
 - **Repo:** `danjdewhurst/trending-models` (MIT)
-- **Deploys:** not set up yet. See Deploying
+- **Deploys:** by hand with `npm run deploy` until the deploy workflow is switched on. See Deploying
 
 ## How it works
 
@@ -65,11 +65,7 @@ If D1 fails, the snapshot is still published without badges. `/__refresh` then r
 
 ## Deploying
 
-The project has not been deployed. Before the first deploy:
-
-1. Create the KV namespace and D1 database (`npx wrangler kv namespace create TRENDING`, `npx wrangler d1 create trending-models`), and replace the zero placeholder ids in `wrangler.jsonc`.
-2. Set the `REFRESH_KEY` secret, and optionally `HF_TOKEN` and `HEALTHCHECK_URL`, with `npx wrangler secret put`.
-3. Run `npm run deploy`, then a refresh (below).
+First deployed on 2026-11-03. The KV namespace is called `trending-models` (the name `TRENDING` belongs to trending-repos), and the D1 database is `trending-models`. Only the `REFRESH_KEY` secret is set; `HF_TOKEN` and `HEALTHCHECK_URL` are not.
 
 `.github/workflows/deploy.yml` runs on every push to `main` (pushes that change only Markdown or `LICENSE` skip it), but only when the repository variable `DEPLOY_ENABLED` is `true`. It reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `production` environment. The token needs Workers Scripts, Workers KV and D1 edit on the account, and Workers Routes edit on the `ddewhurst.com` zone.
 
@@ -94,7 +90,7 @@ curl -X POST -H "authorization: Bearer $(grep '^REFRESH_KEY=' .dev.vars | cut -d
 
 ## Data
 
-D1 table `snapshot_models`: one row per model per refresh, primary key `(fetched_at, rank)`.
+D1 table `snapshot_models`: one row per model per refresh, primary key `(fetched_at, rank)`. History starts on 2026-11-03.
 
 D1 table `model_days`: one row per model per UTC day it trended. `model_id` ("author/name") compares ignoring case. Badge stats read this, not `snapshot_models`, so their cost grows with days trending rather than with refresh count.
 
