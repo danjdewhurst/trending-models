@@ -1,4 +1,4 @@
-import { isStale, renderPage, timeAgo } from "./render";
+import { isStale, RENDER_VERSION, renderPage, timeAgo } from "./render";
 import { KEY, MIN_CRON_INTERVAL_MS, refresh } from "./refresh";
 import { pingHealthcheck } from "./health";
 import { authorized, etagMatches } from "./http";
@@ -12,7 +12,8 @@ const NOSNIFF = { "x-content-type-options": "nosniff" };
 const SECURITY_HEADERS = {
 	"content-security-policy":
 		"default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; " +
-		"img-src https://cdn-avatars.huggingface.co data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+		// The only image is the inline SVG favicon
+		"img-src data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
 	"x-content-type-options": "nosniff",
 	"referrer-policy": "strict-origin-when-cross-origin",
 };
@@ -56,14 +57,15 @@ export default {
 
 		// cacheTtl lets each location keep the value for a minute instead of reading KV every time
 		const snapshot = await env.TRENDING.get<Snapshot>(KEY, { type: "json", cacheTtl: 60 });
-		// The page shows "updated N min ago" and maybe a stale notice, so its ETag changes with them
+		// The page shows "updated N min ago" and maybe a stale notice, so its ETag changes with them,
+		// and with RENDER_VERSION, so a browser holding an old page's markup doesn't revalidate it to 304
 		const version = snapshot?.fetchedAt ?? "empty";
 		const now = new Date();
 		// An entity tag can't hold spaces, so "5 min ago" goes in as "5-min-ago"
 		const pageState = snapshot
 			? `-${timeAgo(snapshot.fetchedAt, now).replace(/ /g, "-")}${isStale(snapshot.fetchedAt, now) ? "-stale" : ""}`
 			: "";
-		const etag = pathname === "/" ? `"${version}${pageState}"` : `"${version}"`;
+		const etag = pathname === "/" ? `"${version}${pageState}-r${RENDER_VERSION}"` : `"${version}"`;
 		const headers: Record<string, string> = { ...NOSNIFF, "cache-control": CACHE_CONTROL, etag };
 		if (snapshot) headers["last-modified"] = new Date(snapshot.fetchedAt).toUTCString();
 

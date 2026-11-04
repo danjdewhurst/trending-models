@@ -12,12 +12,11 @@ A Cloudflare Worker that reads the Hugging Face trending model list every 4 hour
 cron (0 */4 * * *) or POST /__refresh
   → GET huggingface.co/api/models?sort=trendingScore&limit=30 (one JSON call)
   → refuse to publish if it looks broken (< 5 models, or no trending scores)
-  → look up each author's avatar (organization route, then user route)
   → append rows to D1 (history), read back badge stats and the first day of history
   → write the snapshot to KV under "latest", unless KV already has a newer one
   → cron only: ping HEALTHCHECK_URL, or <url>/fail if the refresh or the D1 write failed
 
-GET /              → HTML rendered from KV
+GET /              → HTML rendered from KV, in Hugging Face's order (which is the trending-score order)
 GET /api/trending  → the KV snapshot as JSON
 GET /fonts/*, /og.png → static assets from public/, served before the Worker runs
 ```
@@ -31,10 +30,10 @@ If D1 fails, the snapshot is still published without badges. `/__refresh` then r
 | Path | Purpose |
 |---|---|
 | `src/index.ts` | Routes and cron handler. Exports only the handler (see Gotchas) |
-| `src/refresh.ts` | `refresh()`: fetch, add avatars, save history, publish to KV |
-| `src/huggingface.ts` | Trending list and avatar lookups on the Hugging Face API, and the mapping to `Model` |
+| `src/refresh.ts` | `refresh()`: fetch, save history, publish to KV |
+| `src/huggingface.ts` | The trending list call on the Hugging Face API, and the mapping to `Model` |
 | `src/history.ts` | D1 writes and badge stats (days trending, first seen, history start) |
-| `src/render.ts` | The page: HTML and CSS in one template, no client JS, styled as a printed singles chart. Shows a notice when data is over 12 hours old |
+| `src/render.ts` | The page: HTML and CSS in one template, no client JS, styled as a printed singles chart. Shows a notice when data is over 12 hours old. `RENDER_VERSION` is part of the page ETag |
 | `PRODUCT.md` | Product context: users, purpose, constraints |
 | `DESIGN.md` | The page's design system: tokens, type, layout rules. Read before changing `render.ts` |
 | `.impeccable/surfaces/` | The page's design brief and direction contract |
@@ -99,7 +98,7 @@ A past row is the same model if its `hf_id` (Hugging Face's internal id, so it s
 Badges are computed at refresh time and stored in the snapshot:
 
 - `isNew`: first seen today (UTC), and only when a refresh was saved yesterday. Otherwise every model would be "new" on the first day of history, or after a gap.
-- `daysTrending`: distinct UTC days seen, not necessarily in a row. The page shows it in the "Days on" column, and sets runs of 7 days or more heavier.
+- `daysTrending`: distinct UTC days seen, not necessarily in a row. The page shows it in the "Days on" column (screen readers hear "Trended on N days"), boxes runs of 4 days or more, and prints runs of 7 or more larger.
 - `historyStart` (on the snapshot): the first day in `model_days`. The key says "since <date>", so it needs no hard-coded start date.
 
 API fields the page uses: `trendingScore` (the sort key and the "Score" column), `likes`, `downloads` (Hugging Face counts the last 30 days), `pipeline_tag` (task), `library_name`, the `license:` tag, `safetensors.total` or `gguf.total` (parameters), `createdAt`, `gated` and `_id`.
@@ -108,8 +107,9 @@ API fields the page uses: `trendingScore` (the sort key and the "Score" column),
 
 - **Merging to `main` changes production.** The deploy workflow applies new D1 migrations, then deploys the Worker. The old Worker runs against the new schema for a short time, so make migrations additive. The workflow does not run a refresh, so refresh by hand after a change to data shape.
 - **The fetch depends on the Hugging Face API's shape.** If the list call fails or returns fewer than 5 usable models, `refresh()` throws and keeps the old data: `/__refresh` returns 502 and the cron run shows as failed. Check `src/huggingface.ts`, then refresh `test/fixtures/trending.json`.
-- **Model ids are checked before they become links** (`MODEL_ID` in `src/huggingface.ts`). Avatars are kept only from `https://cdn-avatars.huggingface.co/`, which is also the only image host in the CSP. Change both together.
-- **Avatar lookups stop at the first rate-limit response.** The remaining authors print a blank square.
+- **Model ids are checked before they become links** (`MODEL_ID` in `src/huggingface.ts`).
+- **The page loads no remote images.** The CSP allows `img-src data:` only, for the inline favicon. The page prints no avatars, so a refresh makes one request to Hugging Face. Snapshots written before 2026-11-04 still carry an `avatarUrl`; nothing reads it.
+- **Bump `RENDER_VERSION` in `src/render.ts` when the page markup or CSS changes.** The CSS is inline in the page. The version is part of the page ETag, so a browser that holds the old page gets the new one instead of a 304.
 - **Bump `wrangler` and `@cloudflare/vitest-plugin` together.** They release in step, and the plugin pins exact wrangler and miniflare versions. Check `npm ls wrangler miniflare` shows one copy of each.
 - **`src/index.ts` must export only the default handler.** workerd rejects any other export that isn't an entrypoint, so `wrangler dev` fails and a deploy may too. Tests don't catch this; put helpers in their own modules.
 - **Cloudflare weakens ETags when it compresses a response** (`"x"` becomes `W/"x"`), so `If-None-Match` comes back weak. `etagMatches()` ignores the `W/` prefix.
@@ -119,4 +119,4 @@ API fields the page uses: `trendingScore` (the sort key and the "Score" column),
 - **Killing dev servers:** `pkill -f wrangler` also matches the shell running it if the command line contains "wrangler". Use `pkill -x workerd` or stop the background task.
 - **To preview on the VM**, use Tailscale Serve (`tailscale serve --bg --https=8787 http://127.0.0.1:8787`), not localhost links. Turn it off afterwards.
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-04_

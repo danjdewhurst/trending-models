@@ -12,7 +12,7 @@ Developers and people who follow open models and want a better view of Hugging F
 
 ## Product Purpose
 
-trending-models reads the Hugging Face trending list every 4 hours from the public API, adds each author's avatar, and keeps a history in D1. A visit must give two things at once: today's trending list with trending scores, easy to scan, and a clear view of which models are new today and which keep trending across days.
+trending-models reads the Hugging Face trending list every 4 hours from the public API and keeps a history in D1. A visit must give two things at once: today's trending list with trending scores, easy to scan, and a clear view of which models are new today and which keep trending across days.
 
 Success: a visitor finds a model worth opening within a few seconds, and can tell a one-day spike from a model with staying power.
 
@@ -28,9 +28,9 @@ Hugging Face's own trending page shows only now. This site remembers. Each model
 
 ## Capabilities and Constraints
 
-- Per model: id, author, name, URL, Hugging Face's internal id, task (pipeline tag), library, license, parameter count, likes, downloads (last 30 days), trending score, creation date, gated flag, and the author's avatar when that lookup works. From history: `daysTrending`, `isNew`. On the snapshot: `historyStart`.
+- Per model: id, author, name, URL, Hugging Face's internal id, task (pipeline tag), library, license, parameter count, likes, downloads (last 30 days), trending score, creation date, gated flag. From history: `daysTrending`, `isNew`. On the snapshot: `historyStart`.
 - 30 models per snapshot, the first page of huggingface.co/models.
-- Any field except the id can be missing; avatar lookups can fail or be rate limited. Design must hold up without them.
+- Any field except the id can be missing. Design must hold up without them.
 - Rendered server-side in a Cloudflare Worker from one template (`src/render.ts`), with no client JavaScript. The CSP (`src/index.ts`) has no `script-src`.
 - Follows the system light/dark preference.
 

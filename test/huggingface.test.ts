@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addAvatars, fetchTrending, MAX_AVATAR_LOOKUPS, toModel } from "../src/huggingface";
-import { apiModel, AVATAR, mockHuggingFace, trendingJson } from "./helpers";
+import { fetchTrending, toModel } from "../src/huggingface";
+import { apiModel, mockHuggingFace, trendingJson } from "./helpers";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -129,67 +129,5 @@ describe("toModel", () => {
 	it("reads the license from its tag", () => {
 		expect(toModel(apiModel("o/a", { tags: ["region:us", "license:mit"] }))?.license).toBe("mit");
 		expect(toModel(apiModel("o/a", { tags: ["region:us"] }))?.license).toBeNull();
-	});
-});
-
-describe("addAvatars", () => {
-	const models = () => ["o/a", "o/b", "p/c"].map((id) => toModel(apiModel(id))!);
-
-	it("looks each author up once, as an organization and then as a user", async () => {
-		const fetch = mockHuggingFace([], (author) =>
-			author === "p" ? new Response("Not found", { status: 404 }) : Response.json({ avatarUrl: AVATAR }),
-		);
-		const out = await addAvatars(models());
-		expect(out.map((m) => m.avatarUrl)).toEqual([AVATAR, AVATAR, null]);
-		const urls = fetch.mock.calls.map(([input]) => new URL(String(input)).pathname).sort();
-		expect(urls).toEqual(["/api/organizations/o/avatar", "/api/organizations/p/avatar", "/api/users/p/avatar"]);
-	});
-
-	it("finds a user's avatar on the user route", async () => {
-		const userAvatar = "https://cdn-avatars.huggingface.co/v1/production/uploads/2/u.png";
-		mockHuggingFace(
-			[],
-			() => new Response("Not found", { status: 404 }),
-			(author) => (author === "p" ? Response.json({ avatarUrl: userAvatar }) : new Response("Not found", { status: 404 })),
-		);
-		expect((await addAvatars(models())).map((m) => m.avatarUrl)).toEqual([null, null, userAvatar]);
-	});
-
-	it("reuses known avatars without a lookup", async () => {
-		const fetch = mockHuggingFace([]);
-		const out = await addAvatars(models(), undefined, new Map([["o", "https://cdn-avatars.huggingface.co/known.png"]]));
-		expect(out.map((m) => m.avatarUrl)).toEqual(["https://cdn-avatars.huggingface.co/known.png", "https://cdn-avatars.huggingface.co/known.png", AVATAR]);
-		expect(fetch.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(["/api/organizations/p/avatar"]);
-	});
-
-	it("looks up at most MAX_AVATAR_LOOKUPS authors in one refresh", async () => {
-		const fetch = mockHuggingFace([]);
-		const many = Array.from({ length: MAX_AVATAR_LOOKUPS + 5 }, (_, i) => toModel(apiModel(`a${i}/m`))!);
-		const out = await addAvatars(many);
-		expect(fetch.mock.calls).toHaveLength(MAX_AVATAR_LOOKUPS);
-		expect(out.filter((m) => m.avatarUrl === AVATAR)).toHaveLength(MAX_AVATAR_LOOKUPS);
-		expect(out.slice(MAX_AVATAR_LOOKUPS).every((m) => m.avatarUrl === undefined)).toBe(true);
-	});
-
-	it("keeps only avatars on Hugging Face's avatar host", async () => {
-		mockHuggingFace([], () => Response.json({ avatarUrl: "https://evil.example/a.png" }));
-		expect((await addAvatars(models())).map((m) => m.avatarUrl)).toEqual([null, null, null]);
-	});
-
-	it("stops looking up after a rate limit, and keeps the models", async () => {
-		const fetch = mockHuggingFace([], () => new Response("slow down", { status: 429 }));
-		const many = Array.from({ length: 20 }, (_, i) => toModel(apiModel(`a${i}/m`))!);
-		const out = await addAvatars(many);
-		expect(out).toHaveLength(20);
-		// The first round of 6 parallel lookups is already in flight; nothing starts after it
-		expect(fetch.mock.calls).toHaveLength(6);
-		expect(out.every((m) => !m.avatarUrl)).toBe(true);
-	});
-
-	it("survives a lookup that throws", async () => {
-		mockHuggingFace([], () => {
-			throw new Error("network down");
-		});
-		expect((await addAvatars(models())).map((m) => m.avatarUrl)).toEqual([null, null, null]);
 	});
 });
