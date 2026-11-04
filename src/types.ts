@@ -13,8 +13,6 @@ export interface Model {
 	trendingScore: number;
 	createdAt: string | null;
 	gated: boolean;
-	// Filled in from the avatar API; missing when the lookup failed
-	avatarUrl?: string | null;
 	// Filled in from D1 history
 	daysTrending?: number; // distinct UTC days seen on trending, including today
 	isNew?: boolean; // first seen today, and we were tracking before today

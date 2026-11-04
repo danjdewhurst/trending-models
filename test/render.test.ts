@@ -19,7 +19,6 @@ const model = (fields: Partial<Model> = {}): Model => ({
 	trendingScore: 10,
 	createdAt: null,
 	gated: false,
-	avatarUrl: "https://cdn-avatars.huggingface.co/v1/production/uploads/1/a.png",
 	...fields,
 });
 
@@ -46,35 +45,32 @@ describe("renderPage", () => {
 		expect(html).not.toContain("<script>alert");
 		expect(html).not.toContain(`"><img>`);
 		expect(html).not.toMatch(/<[biu]>/);
+		// The link's title carries the name too, so it is escaped there as well
+		expect(html).toContain(`title="&#34;&#62;&#60;img&#62; / &#60;script&#62;alert(1)&#60;/script&#62;"`);
 	});
 
-	it("escapes the avatar URL inside its attribute", () => {
-		const html = page(model({ avatarUrl: `https://cdn-avatars.huggingface.co/x" onerror="alert(1)` }));
-		expect(html).not.toContain(`" onerror=`);
-		expect(html).toContain(`src="https://cdn-avatars.huggingface.co/x&#34; onerror=&#34;alert(1)"`);
+	it("prints no images, so the page loads nothing from other hosts", () => {
+		const html = page(model(), model({ name: "s", isNew: true }));
+		expect(html).not.toContain("<img");
+		expect(html).not.toContain("avatar");
 	});
 
-	it("only puts avatars from Hugging Face's avatar host into <img>", () => {
-		expect(page(model())).toContain(`<img class="avatar" src="https://cdn-avatars.huggingface.co/`);
-		for (const avatarUrl of ["https://evil.example/a.png", "javascript:alert(1)", null, undefined]) {
-			const html = page(model({ avatarUrl }));
-			expect(html).not.toContain("<img");
-			expect(html).toContain(`<span class="avatar" aria-hidden="true"></span>`);
-		}
-	});
-
-	it("gives screen readers the exact counts and the author in the model link", () => {
+	it("gives screen readers the exact counts, and links \"author / name\" as one link", () => {
 		const html = page(model({ author: "acme", name: "awesome", params: 1_728_801_536 }));
 		expect(html).toContain(`<span class="sr-only">12,345 likes</span>`);
 		expect(html).toContain(`<span class="sr-only">6 downloads in the last 30 days</span>`);
 		expect(html).toContain(`<span aria-hidden="true">1.73B params</span>`);
-		expect(html).toContain(`<a class="name" href="https://huggingface.co/o/m"><span class="sr-only">acme / </span>awesome</a>`);
+		expect(html).toContain(
+			`<a class="name" href="https://huggingface.co/o/m" title="acme / awesome"><span class="who"><span class="owner">acme</span><span class="sep"> / </span></span><span class="model">awesome</span></a>`,
+		);
+		// The name is the row's only link
+		expect(count(html.match(/<ol[\s\S]*<\/ol>/)?.[0] ?? "", "<a ")).toBe(1);
 	});
 
 	it("leaves out the author for a bare model id", () => {
 		const html = page(model({ author: null, name: "gpt2" }));
-		expect(html).toMatch(/<a class="name" href="[^"]+">gpt2<\/a>/);
-		expect(html).not.toContain(`class="avatar"`);
+		expect(html).toMatch(/<a class="name" href="[^"]+" title="gpt2"><span class="model">gpt2<\/span><\/a>/);
+		expect(html).not.toContain(`class="who"`);
 	});
 
 	it("prints the task, library, license, gate and creation date", () => {
@@ -82,14 +78,15 @@ describe("renderPage", () => {
 			model({ task: "image-text-to-text", library: "transformers", license: "apache-2.0", gated: true, createdAt: "2026-10-23T21:35:42.000Z" }),
 		);
 		expect(html).toContain(`<span class="task">Image text to text</span>`);
-		expect(html).toContain(`<p class="facts">transformers · apache-2.0 license · gated · created 23 Oct 2026</p>`);
+		// Each fact keeps its words together with no-break spaces
+		expect(html).toContain(`<p class="facts">transformers · apache-2.0\u00a0license · gated · created\u00a023\u00a0Oct\u00a02026</p>`);
 		expect(page(model())).not.toContain(`class="facts"`);
 		expect(page(model())).not.toContain(`class="task"`);
 	});
 
-	it("shows the trending score in the gain column", () => {
+	it("shows the trending score in the score column", () => {
 		const html = page(model({ trendingScore: 1234 }));
-		expect(html).toMatch(/<span class="gain-n">1,234<\/span>\s*<span class="gain-l">trending score<\/span>/);
+		expect(html).toContain(`<span class="gain-n">1,234<span class="sr-only"> trending score</span></span>`);
 	});
 });
 
@@ -124,12 +121,22 @@ describe("days on", () => {
 		expect(three).toContain("Trended on 3 days");
 	});
 
-	it("sets runs of 7 days or more heavier", () => {
-		expect(page(model({ daysTrending: 6 }))).not.toContain("on-n long");
-		expect(page(model({ daysTrending: 7 }))).toContain(`class="on-n long"`);
+	it("boxes runs of 4 days or more, and prints runs of 7 or more larger", () => {
+		// The row's own cell, up to its screen-reader text, so the legend sample can't satisfy the check
+		const cell = (days: number) => page(model({ daysTrending: days })).match(/<span class="on">([\s\S]*?)<\/span>\s*<div class="body">/)?.[1] ?? "";
+		expect(cell(3)).toContain(`<span class="plain"><span class="on-n">3</span>`);
+		expect(cell(4)).toContain(`<span class="run"><span class="on-n mid">4</span>`);
+		expect(cell(6)).toContain(`<span class="run"><span class="on-n mid">6</span>`);
+		expect(cell(7)).toContain(`<span class="run"><span class="on-n long">7</span>`);
 	});
 
-	it("stamps new models instead of counting their days", () => {
+	it("shows a boxed legend sample that matches the rule it explains", () => {
+		const short = page(model({ daysTrending: 2 }));
+		expect(short).toMatch(/class="key-days"[^>]*><span class="run"><span class="on-n mid">4<\/span>[\s\S]*?boxed from 4 days/);
+		expect(page(model({ daysTrending: 9 }))).toMatch(/class="key-days"[^>]*><span class="run"><span class="on-n mid">9<\/span>/);
+	});
+
+	it("tags new models instead of counting their days", () => {
 		const html = page(model({ isNew: true, daysTrending: 4 }));
 		expect(html).toContain(`class="stamp"`);
 		expect(html).toContain("New today");
@@ -145,10 +152,11 @@ describe("days on", () => {
 		const none = page(model(), model({ name: "s" }));
 		expect(count(none, "No history yet")).toBe(2);
 		expect(none).not.toContain(`class="stamp stamp-key"`);
-		expect(none).toContain("Days on:");
+		// No history at all (D1 failed), so there are no day counts to explain
+		expect(none).not.toContain(`class="key-days"`);
 
-		expect(page(model({ daysTrending: 1 }))).not.toContain("first seen on trending today");
-		expect(page(model({ isNew: true, daysTrending: 1 }))).toContain("first seen on trending today");
+		expect(page(model({ daysTrending: 1 }))).not.toContain("first day on Hugging Face trending");
+		expect(page(model({ isNew: true, daysTrending: 1 }))).toContain("first day on Hugging Face trending");
 	});
 });
 
@@ -174,18 +182,51 @@ describe("chart layout", () => {
 		expect(two).toContain(`aria-label="Positions 2 to 2"`);
 	});
 
-	it("reverses only the No. 1 row", () => {
+	it("marks only the No. 1 row", () => {
 		const html = page(...names(3));
 		expect(count(html, `class="row one"`)).toBe(1);
 		expect(html).toMatch(/class="row one">\s*<span class="pos">1<\/span>/);
 	});
 
+	it("keeps Hugging Face's order", () => {
+		const html = page(model({ name: "a", trendingScore: 50 }), model({ name: "b", trendingScore: 200 }), model({ name: "c", trendingScore: 50 }));
+		const order = [...html.matchAll(/<span class="model">(\w+)<\/span>/g)].map((m) => m[1]);
+		expect(order).toEqual(["a", "b", "c"]);
+		expect(html).toContain("Ranked by Hugging Face's trending score.");
+	});
+
+	it("prints each column's range in its heads, and pairs the rows across the columns", () => {
+		const html = page(...names(5));
+		expect(html).toContain(`<div class="chart" style="--rows:3">`);
+		expect(html).toContain(`Model <span class="range">1–3</span>`);
+		expect(html).toContain(`Model <span class="range">4–5</span>`);
+	});
+
+	it("scales each score bar to the top score", () => {
+		const html = page(model({ name: "a", trendingScore: 200 }), model({ name: "b", trendingScore: 50 }), model({ name: "c", trendingScore: 1 }));
+		const widths = [...html.matchAll(/<span style="width:(\d+)%"><\/span>/g)].map((m) => Number(m[1]));
+		// The smallest still shows a sliver
+		expect(widths).toEqual([100, 25, 8]);
+	});
+
+	it("draws no bar for no score", () => {
+		const widths = (html: string) => [...html.matchAll(/<span style="width:(\d+)%"><\/span>/g)].map((m) => Number(m[1]));
+		expect(widths(page(model({ name: "a", trendingScore: 200 }), model({ name: "b", trendingScore: 0 })))).toEqual([100, 0]);
+		expect(widths(page(model({ name: "a", trendingScore: 0 }), model({ name: "b", trendingScore: 0 })))).toEqual([0, 0]);
+	});
+
+	it("explains the bars only when there is more than one model", () => {
+		expect(page(...names(2))).toContain(`class="key-sample key-bars"`);
+		expect(page(...names(1))).not.toContain(`class="key-sample key-bars"`);
+	});
+
 	it("counts new models in the key, and says when history starts", () => {
-		const html = renderPage({ fetchedAt: FETCHED_AT, historyStart: "2026-11-03", models: [model({ isNew: true }), model({ name: "s" })] });
-		expect(html).toContain("<strong>2</strong> models trending, <strong>1</strong> of them new");
-		expect(html).toContain("different days on Hugging Face trending since 3 Nov 2026");
+		const html = renderPage({ fetchedAt: FETCHED_AT, historyStart: "2026-11-03", models: [model({ isNew: true }), model({ name: "s", daysTrending: 1 })] });
+		expect(html).toContain("<strong>2</strong> models trending, <strong>1</strong> of them new to trending.");
+		expect(html).toContain("days on Hugging Face trending since 3 Nov 2026; boxed from 4 days");
 		expect(page(model())).not.toContain("of them new");
-		expect(page(model())).not.toContain(" since ");
+		expect(page(model({ daysTrending: 1 }))).not.toContain(" since ");
+		expect(page(model())).toContain("<strong>1</strong> model trending.");
 	});
 });
 
@@ -213,25 +254,29 @@ describe("freshness and fonts", () => {
 		expect(html).toContain(`<meta name="theme-color" content="${cyans[1]}" media="(prefers-color-scheme: dark)">`);
 	});
 
-	it("keeps No. 1's text at 7:1 or more on the dark cyan", () => {
+	it("keeps ink on both cyans, and both inks on their sheets, at 7:1 or more", () => {
 		const html = renderPage(null);
-		const dark = html.match(/prefers-color-scheme: dark\) \{\s*:root \{([^}]+)\}/)?.[1] ?? "";
-		const token = (name: string) => dark.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
-		const cyan = token("cyan");
-		expect(dark).toContain("--one-bg: var(--cyan);");
-		expect(contrast(cyan, token("one-fg"))).toBeGreaterThanOrEqual(7);
-		expect(contrast(cyan, token("one-muted"))).toBeGreaterThanOrEqual(7);
+		const tokens = (css: string) => (name: string) => css.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
+		const light = tokens(html.match(/:root \{([^}]+)\}/)?.[1] ?? "");
+		const dark = tokens(html.match(/prefers-color-scheme: dark\) \{\s*:root \{([^}]+)\}/)?.[1] ?? "");
+		// The masthead prints black on cyan in both schemes
+		expect(contrast(light("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
+		expect(contrast(dark("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
+		// On the dark sheet the NEW tag is cyan text in a cyan outline
+		expect(contrast(dark("cyan"), dark("sheet"))).toBeGreaterThanOrEqual(7);
+		// Light --pos is var(--ink), so it falls back to ink
+		for (const t of [light, dark]) {
+			for (const fg of ["ink", "muted", "pos"]) expect(contrast(t("sheet"), t(fg) || t("ink"))).toBeGreaterThanOrEqual(7);
+		}
 	});
 
-	it("keeps the masthead and No. 1's score at 7:1 or more on the light sheet, and the favicon in the same cyan", () => {
+	it("prints the favicon in the light cyan, and uses no other spot colour", () => {
 		const html = renderPage(null);
-		const light = html.match(/:root \{([^}]+)\}/)?.[1] ?? "";
-		const token = (name: string) => light.match(new RegExp(`--${name}: (#[0-9a-f]{3}(?:[0-9a-f]{3})?);`))?.[1] ?? "";
-		const cyan = token("cyan");
-		expect(contrast(cyan, token("black"))).toBeGreaterThanOrEqual(7);
-		expect(token("one-gain")).toBe(cyan);
-		expect(contrast(token("one-gain"), token("one-bg"))).toBeGreaterThanOrEqual(7);
+		const cyan = html.match(/--cyan: (#[0-9a-f]{6});/)?.[1] ?? "";
 		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
+		// NEW prints in the masthead's cyan, so the old stamp pink is gone
+		expect(html).not.toContain("--pink");
+		expect(html).not.toMatch(/#ff3d8b/i);
 	});
 });
 
@@ -293,7 +338,7 @@ describe("empty and partial states", () => {
 	it("shows the chart time but no key for a snapshot with no models", () => {
 		const html = renderPage({ fetchedAt: FETCHED_AT, models: [] });
 		expect(html).toContain("No trending data yet");
-		expect(html).toContain(`class="when-time"`);
+		expect(html).toContain(`class="when-ago"`);
 		expect(html).not.toContain(`class="key"`);
 	});
 
@@ -312,9 +357,16 @@ describe("chartTime", () => {
 		expect(chartTime("nope")).toBeNull();
 	});
 
+	it("leads the dateline with the age, then the exact UTC time", () => {
+		const html = renderPage({ fetchedAt: "2026-10-05T23:30:00Z", models: [model()] }, new Date("2026-10-06T01:30:00Z"));
+		expect(html).toMatch(
+			/<span class="when-label">Updated<\/span>\s*<span class="when-ago">2 hours ago<\/span>\s*<span class="when-day">Chart of Mon 5 Oct 2026, <time /,
+		);
+	});
+
 	it("puts the raw timestamp on the time element", () => {
 		expect(renderPage({ fetchedAt: "2026-10-05T23:30:00Z", models: [model()] })).toContain(
-			`<time class="when-time" datetime="2026-10-05T23:30:00Z">23:30</time>`,
+			`<time datetime="2026-10-05T23:30:00Z">23:30 UTC</time>`,
 		);
 	});
 });

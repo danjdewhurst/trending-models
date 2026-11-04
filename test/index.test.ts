@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "../src/index";
 import { etagMatches } from "../src/http";
 import { MIN_CRON_INTERVAL_MS, refresh } from "../src/refresh";
-import { STALE_AFTER_MS } from "../src/render";
+import { RENDER_VERSION, STALE_AFTER_MS } from "../src/render";
 import { pingHealthcheck } from "../src/health";
 import type { Snapshot } from "../src/types";
 import { apiModel, five, HEALTHCHECK_URL, mockHuggingFace, trendingJson } from "./helpers";
@@ -47,9 +47,11 @@ describe("routes", () => {
 		expect((await get("/api/trending")).headers.get("cache-control")).toBe("public, max-age=60");
 	});
 
-	it("allows images only from Hugging Face's avatar host, and no scripts", async () => {
+	it("allows no remote images and no scripts", async () => {
 		const csp = (await get("/")).headers.get("content-security-policy")!;
-		expect(csp).toMatch(/img-src https:\/\/cdn-avatars\.huggingface\.co data:;/);
+		// The page's only image is the inline SVG favicon
+		expect(csp).toContain("img-src data:;");
+		expect(csp).not.toContain("https:");
 		expect(csp).not.toContain("script-src");
 	});
 
@@ -74,6 +76,17 @@ describe("routes", () => {
 		for (const tag of [early.page, later.page, early.api]) expect(tag).toMatch(/^"[^\s"]+"$/);
 		const res = await get("/api/trending", { headers: { "if-none-match": early.api } });
 		expect(res.status).toBe(304);
+	});
+
+	it("puts the render version in the page ETag, so a markup change never revalidates an old page", async () => {
+		const fetchedAt = new Date().toISOString();
+		await env.TRENDING.put("latest", JSON.stringify({ fetchedAt, models: [] }));
+		expect((await get("/")).headers.get("etag")).toMatch(new RegExp(`-r${RENDER_VERSION}"$`));
+		// An old page's ETag, from before the version was in it
+		const old = `"${fetchedAt}-just-now"`;
+		expect((await get("/", { headers: { "if-none-match": old } })).status).toBe(200);
+		// The JSON doesn't change with the markup
+		expect((await get("/api/trending")).headers.get("etag")).toBe(`"${fetchedAt}"`);
 	});
 
 	it("answers a matching If-None-Match with 304", async () => {
@@ -153,7 +166,7 @@ describe("refresh", () => {
 		expect(await res.json()).toMatchObject({ models: 5, history: "ok" });
 
 		const snapshot = await env.TRENDING.get<Snapshot>("latest", "json");
-		expect(snapshot?.models[0]).toMatchObject({ daysTrending: 1, avatarUrl: expect.stringMatching(/^https:\/\/cdn-avatars/) });
+		expect(snapshot?.models[0]).toMatchObject({ daysTrending: 1 });
 		expect(snapshot?.historyStart).toBe(snapshot?.fetchedAt.slice(0, 10));
 		const { count } = (await env.DB.prepare("SELECT COUNT(*) AS count FROM snapshot_models").first<{ count: number }>())!;
 		expect(count).toBe(5);
@@ -179,11 +192,12 @@ describe("refresh", () => {
 		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe("2026-01-01T00:00:00.000Z");
 	});
 
-	it("still publishes when every avatar lookup fails", async () => {
-		mockHuggingFace(trendingJson, () => new Response("down", { status: 500 }));
+	it("makes one request to Hugging Face, for the list", async () => {
+		// The page prints no avatars, so the refresh doesn't look them up
+		const fetch = mockHuggingFace(trendingJson);
 		const { snapshot } = await refresh(env);
 		expect(snapshot.models).toHaveLength(5);
-		expect(snapshot.models.every((m) => m.avatarUrl === null)).toBe(true);
+		expect(fetch.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(["/api/models"]);
 	});
 
 	it("reports a history failure from /__refresh", async () => {
@@ -200,20 +214,6 @@ describe("refresh", () => {
 		expect(historyError).toMatch(/no such table/);
 		expect(snapshot.models[0].daysTrending).toBeUndefined();
 		expect((await env.TRENDING.get<Snapshot>("latest", "json"))?.fetchedAt).toBe(snapshot.fetchedAt);
-	});
-
-	it("reuses avatars from the last snapshot instead of looking them up", async () => {
-		const known = "https://cdn-avatars.huggingface.co/known.png";
-		await env.TRENDING.put(
-			"latest",
-			JSON.stringify({ fetchedAt: "2026-01-01T00:00:00.000Z", models: [{ id: "LiquidAI/x", author: "LiquidAI", avatarUrl: known }] }),
-		);
-		const fetch = mockHuggingFace(trendingJson);
-		const { snapshot } = await refresh(env);
-		expect(snapshot.models[0]).toMatchObject({ author: "LiquidAI", avatarUrl: known });
-		const lookups = fetch.mock.calls.map(([input]) => String(input)).filter((u) => u.includes("/avatar"));
-		expect(lookups.some((u) => u.includes("LiquidAI"))).toBe(false);
-		expect(lookups.length).toBeGreaterThan(0);
 	});
 
 	it("doesn't overwrite a newer snapshot", async () => {

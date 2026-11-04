@@ -22,18 +22,11 @@ export const TRENDING_URL =
 const USER_AGENT = "trending-models (Cloudflare Worker)";
 // A hung request would otherwise stall the whole refresh
 const TIMEOUT_MS = 10_000;
-// Workers allows 6 open connections at once; more just queue
-const CONCURRENCY = 6;
-// Only this host goes into <img src>, and the CSP allows only this host
-const AVATAR_ORIGIN = "https://cdn-avatars.huggingface.co/";
 // Repo ids are "author/name", or a bare name for a few early models. Each part starts with a
 // letter, digit or underscore, so ".." can't turn the link into another path
 const MODEL_ID = /^\w[\w.-]*(?:\/\w[\w.-]*)?$/;
 // The author of a bare id comes from its own field, so it gets the same check
 const AUTHOR = /^\w[\w.-]*$/;
-// Each author costs one or two subrequests. Workers Free allows 50 per invocation, so a
-// refresh looks up at most this many and reuses avatars from the last snapshot
-export const MAX_AVATAR_LOOKUPS = 20;
 
 function headers(token: string | undefined, accept: string): Record<string, string> {
 	const h: Record<string, string> = { "user-agent": USER_AGENT, accept };
@@ -111,56 +104,4 @@ function str(v: unknown): string | null {
 
 function num(v: unknown): number {
 	return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
-}
-
-// Adds each author's avatar. `known` holds avatars from the last snapshot, which are reused
-// without a lookup. An author is an organization or a user, and the API has a separate route
-// for each, so a 404 from the first means try the second. A failed lookup leaves that author
-// without an avatar. Once the API says we're rate limited, the remaining lookups are skipped.
-export async function addAvatars(models: Model[], token?: string, known = new Map<string, string>()): Promise<Model[]> {
-	const avatars = new Map<string, string | null>(known);
-	const unknown = [...new Set(models.map((m) => m.author).filter((a): a is string => a !== null && !known.has(a)))];
-	const authors = unknown.slice(0, MAX_AVATAR_LOOKUPS);
-	if (unknown.length > authors.length) console.warn(`avatars: ${unknown.length - authors.length} authors over the lookup cap`);
-	let next = 0;
-	let rateLimited = false;
-	let skipped = 0;
-
-	async function get(url: string): Promise<Response> {
-		const res = await fetch(url, { headers: headers(token, "application/json"), signal: AbortSignal.timeout(TIMEOUT_MS) });
-		if (res.status === 429) rateLimited = true;
-		return res;
-	}
-
-	async function lookup(author: string): Promise<string | null> {
-		try {
-			const name = encodeURIComponent(author);
-			let res = await get(`${API}/organizations/${name}/avatar`);
-			if (res.status === 404 && !rateLimited) res = await get(`${API}/users/${name}/avatar`);
-			if (!res.ok) {
-				console.warn(`avatar ${author}: ${res.status}`);
-				return null;
-			}
-			const { avatarUrl } = await res.json<{ avatarUrl?: unknown }>();
-			return typeof avatarUrl === "string" && avatarUrl.startsWith(AVATAR_ORIGIN) ? avatarUrl : null;
-		} catch (err) {
-			console.warn(`avatar ${author}:`, err);
-			return null;
-		}
-	}
-
-	async function worker(): Promise<void> {
-		while (next < authors.length) {
-			const author = authors[next++];
-			if (rateLimited) {
-				skipped++;
-				continue;
-			}
-			avatars.set(author, await lookup(author));
-		}
-	}
-
-	await Promise.all(Array.from({ length: Math.min(CONCURRENCY, authors.length) }, worker));
-	if (skipped) console.warn(`avatars: rate limited, skipped ${skipped} lookups`);
-	return models.map((m) => (m.author && avatars.has(m.author) ? { ...m, avatarUrl: avatars.get(m.author) } : m));
 }

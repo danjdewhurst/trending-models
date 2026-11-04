@@ -18,7 +18,7 @@ A sibling of [trending-repos](https://github.com/forjd/trending-repos), which do
 ## What it does
 
 - Reads the 30 top models by trending score from the Hugging Face API on a cron trigger every 4 hours. This is the list that [huggingface.co/models](https://huggingface.co/models) shows first.
-- Shows each model's task, parameter count, likes, downloads, library, license and creation date, and looks up each author's avatar.
+- Shows each model's task, parameter count, likes, downloads, library, license and creation date, with a bar that compares its trending score to the top score.
 - Stores every refresh in D1, so each model can carry a **New today** or **Trended on N days** badge. Hugging Face's internal model id survives renames, so a renamed model keeps its history.
 - Renders the page from a single KV read, with ETags and caching. The page has no client-side JavaScript and follows your system's light or dark mode.
 - Serves the same snapshot as JSON at [`/api/trending`](https://models.ddewhurst.com/api/trending).
@@ -33,8 +33,7 @@ flowchart LR
     manual["POST /__refresh"] --> fetch
     fetch["Read the trending list<br/>huggingface.co/api/models"] --> check{"5+ models with<br/>a trending score?"}
     check -- no --> keep["Keep old data"]
-    check -- yes --> avatars["Look up<br/>author avatars"]
-    avatars --> d1[("D1<br/>history")]
+    check -- yes --> d1[("D1<br/>history")]
     d1 --> kv[("KV<br/>latest snapshot")]
     kv --> page["GET /<br/>HTML page"]
     kv --> api["GET /api/trending<br/>JSON"]

@@ -1,4 +1,4 @@
-import { addAvatars, fetchTrending } from "./huggingface";
+import { fetchTrending } from "./huggingface";
 import { getTrendingStats, saveSnapshot, type TrendingStats } from "./history";
 import type { Snapshot } from "./types";
 
@@ -18,15 +18,9 @@ export interface RefreshResult {
 
 export async function refresh(env: Env): Promise<RefreshResult> {
 	const token = env.HF_TOKEN || undefined;
-	const fetched = await fetchTrending(token);
+	const models = await fetchTrending(token);
 	// Throwing keeps the old data in KV and makes the failure show up in logs and /__refresh
-	checkScrape(fetched.length, fetched.filter((m) => m.trendingScore > 0).length);
-
-	// Avatars rarely change, so reuse the ones the last snapshot found
-	const previous = await env.TRENDING.get<Snapshot>(KEY, "json");
-	const known = new Map<string, string>();
-	for (const m of previous?.models ?? []) if (m.author && m.avatarUrl) known.set(m.author, m.avatarUrl);
-	const models = await addAvatars(fetched, token, known);
+	checkScrape(models.length, models.filter((m) => m.trendingScore > 0).length);
 	const snapshot: Snapshot = { fetchedAt: new Date().toISOString(), models };
 
 	// History is a bonus: if D1 fails, still publish the fresh list without badges,
