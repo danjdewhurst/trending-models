@@ -225,9 +225,9 @@ Both faces are self-hosted in `public/fonts` as variable woff2 files (Big Should
 
 The page is a centred sheet, max 1440px, with 40px side gutters (16px at 640px and below). Every band (masthead, key strip, chart, footer) shares the same measure, so their left edges and rules align.
 
-**Masthead.** A three-column grid (title, strapline and description, dateline), bottom-aligned, gaps 16px by 40px. At 1100px and below the title and strapline stack on the left and the dateline stands to their right. At 640px everything stacks: the title on one line, the strapline without its description (the key already says what the chart is), then the dateline on one line, "UPDATED 2 HOURS AGO", over "Chart of Wed 4 Nov 2026, 16:00 UTC".
+**Masthead.** A three-column grid (title, strapline and description, dateline), bottom-aligned, gaps 16px by 40px. At 1100px and below the title and strapline stack on the left and the dateline stands to their right. At 640px everything stacks: the title on one line, the strapline (which may wrap on the narrowest phones) without its description (the key already says what the chart is), then the dateline on one line, "UPDATED 2 HOURS AGO", over "Chart of Wed 4 Nov 2026, 16:00 UTC".
 
-**Chart key strip.** A full-width strip under the masthead, padded 10px, closed by a hairline. Its top line gives the live counts and the order ("30 models trending, 3 of them new to trending. Ranked by Hugging Face's trending score."). Under it, the legend: NEW, a boxed days sample ("N DAYS = days on Hugging Face trending since 3 Nov 2026; boxed from 4 days"), and a bar sample ("share of the top score"). The days sample shows today's longest run (at least 4), and is omitted when no model has history (D1 failed). The NEW sample is omitted when no model is new, and the bar sample when there is only one model. At 1100px and below the samples sit in a fixed 60px column so their text lines up; on phones that column is 52px, the same as the rank column, so the legend text and the model column share one left edge. The bar sample is hidden on phones, where bars are hidden.
+**Chart key strip.** A full-width strip under the masthead, padded 10px, closed by a hairline. Its top line gives the live counts and the order ("30 models trending, 3 of them new to trending. Ranked by Hugging Face's trending score."). Under it, the legend: NEW, a boxed days sample ("N DAYS = days on Hugging Face trending since 3 Nov 2026; boxed from 4 days"), and a bar sample ("share of the top score"). The days sample shows today's longest run (at least 4), and is omitted when no model has history (D1 failed). The NEW sample is omitted when no model is new, and the bar sample when there is only one model. At 1100px and below the samples sit in a 64px column so their text lines up; on phones that column is 52px, the same as the rank column, so the legend text and the model column share one left edge; the days sample stacks its number over its unit there, like the rows. A sample wider than its column (a three-digit run) widens it, so it never covers the text. The bar sample is hidden on phones, where bars are hidden.
 
 **Chart order.** The page keeps the order of the Hugging Face API's `sort=trendingScore` list, which is the order huggingface.co/models shows. That order is the trending-score order, so the page has no second order and no "Rank by" switch.
 
@@ -274,7 +274,7 @@ When the snapshot is more than 12 hours old (three missed runs), a full-width st
 - **Model link:** one link, "author / name". The author is weight 500 in Press Grey; only the name is underlined (1px, 3px offset, 45% of the text colour), and the underline goes solid on row hover. A long pair breaks before the name, never inside it. A bare id (no author) prints the name only. The link's `title` repeats "author / name".
 - **Meta line:** task (ink, 700), parameter count ("1.73B params"), compact likes, compact downloads (last 30 days). Compact figures carry the full figure in `title` and in screen-reader text.
 - **Facts line:** library, license, "gated" when access needs approval, and the creation date, joined by middle dots.
-- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (no bar for a score of 0), in ink on a 12% ink track. Screen readers hear "trending score".
+- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (an empty track for a score of 0), in ink on a 12% ink track. Screen readers hear "trending score".
 - **No. 1:** prints on the same sheet as the rest, never reversed. Only its rank numeral is larger (44px), and it stays full ink on the dark sheet. It has the top score, so it needs no other mark.
 - **Hover:** cyan wash background and a solid underline on the name.
 - **Focus:** the row draws a 2px ink outline inset 2px when its name link has focus. Other links use a 2px currentColor outline, offset 2px.
@@ -318,7 +318,7 @@ The two pages share tokens, type, rules, the days-on boxes, the NEW tag, the dat
 - **Do** hide a meta item whole when it does not fit the one-line desktop meta row.
 - **Do** give every compact or visual-only figure a full screen-reader equivalent.
 - **Do** disable the NEW press under reduced motion.
-- **Do** bump `RENDER_VERSION` when the markup changes.
+- **Do** bump `RENDER_VERSION` when the markup or the CSS changes.
 
 ### Don't:
 - **Don't** put models in cards, rounded boxes or shadowed panels.

@@ -109,7 +109,7 @@ API fields the page uses: `trendingScore` (the sort key and the "Score" column),
 - **The fetch depends on the Hugging Face API's shape.** If the list call fails or returns fewer than 5 usable models, `refresh()` throws and keeps the old data: `/__refresh` returns 502 and the cron run shows as failed. Check `src/huggingface.ts`, then refresh `test/fixtures/trending.json`.
 - **Model ids are checked before they become links** (`MODEL_ID` in `src/huggingface.ts`).
 - **The page loads no remote images.** The CSP allows `img-src data:` only, for the inline favicon. The page prints no avatars, so a refresh makes one request to Hugging Face. Snapshots written before 2026-11-04 still carry an `avatarUrl`; nothing reads it.
-- **Bump `RENDER_VERSION` in `src/render.ts` when the page markup changes.** It is part of the page ETag, so a browser that holds the old page gets the new one instead of a 304.
+- **Bump `RENDER_VERSION` in `src/render.ts` when the page markup or CSS changes.** The CSS is inline in the page. The version is part of the page ETag, so a browser that holds the old page gets the new one instead of a 304.
 - **Bump `wrangler` and `@cloudflare/vitest-plugin` together.** They release in step, and the plugin pins exact wrangler and miniflare versions. Check `npm ls wrangler miniflare` shows one copy of each.
 - **`src/index.ts` must export only the default handler.** workerd rejects any other export that isn't an entrypoint, so `wrangler dev` fails and a deploy may too. Tests don't catch this; put helpers in their own modules.
 - **Cloudflare weakens ETags when it compresses a response** (`"x"` becomes `W/"x"`), so `If-None-Match` comes back weak. `etagMatches()` ignores the `W/` prefix.

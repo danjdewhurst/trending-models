@@ -9,7 +9,7 @@ export function isStale(fetchedAt: string, now: Date): boolean {
 
 // Link previews need absolute URLs. The workers.dev address points here too
 export const SITE_URL = "https://models.ddewhurst.com";
-// Part of the page's ETag: bump it when the markup changes, so browsers don't revalidate an old page to 304
+// Part of the page's ETag: bump it when the markup or the CSS changes, so browsers don't revalidate an old page to 304
 export const RENDER_VERSION = "2";
 const TITLE = "Trending Models: Hugging Face trending, with memory";
 const DESCRIPTION =
@@ -138,7 +138,7 @@ function renderRow(model: Model, position: number, maxScore: number): string {
 		// No-break spaces keep a fact whole, so a date or a license never splits across lines
 		.flatMap((f) => (f ? [f.replace(/ /g, "\u00a0")] : []));
 	const delay = Math.min(position, 25) * 40;
-	// The smallest score still shows a sliver; no score shows no bar
+	// The smallest score still shows a sliver; no score shows an empty track
 	const bar = maxScore > 0 && model.trendingScore > 0 ? Math.max(8, Math.round((model.trendingScore / maxScore) * 100)) : 0;
 
 	return `
@@ -550,7 +550,8 @@ footer {
 @media (max-width: 1100px) {
 	/* One column: the sections give up their boxes, so the first heads stay stuck the whole way down */
 	.col { display: contents; }
-	.key-sample { grid-template-columns: 60px minmax(0, 1fr); }
+	/* The column grows for a sample wider than it, such as a three-digit run, so it never covers the text */
+	.key-sample { grid-template-columns: minmax(64px, max-content) minmax(0, 1fr); }
 	/* The dateline stands beside the title, and the strapline sits under it */
 	.mast-in { grid-template-columns: minmax(0, 1fr) auto; }
 	h1 { grid-column: 1; grid-row: 1; }
@@ -565,6 +566,8 @@ footer {
 	h1, .tag, .when { grid-column: 1; grid-row: auto; }
 	/* One line: "TRENDING MODELS" sets about 6.5em wide */
 	h1 { font-size: min(12vw, 64px); white-space: nowrap; }
+	/* The strapline sets about 340px wide, so it may wrap on the narrowest phones */
+	.tag-line { white-space: normal; }
 	/* The key below says what the chart is, so the masthead keeps only the strapline */
 	.tag p:last-child { display: none; }
 	/* One line, "UPDATED 2 HOURS AGO", over the exact time */
@@ -575,7 +578,10 @@ footer {
 
 	/* Legend text and the model column share one left edge */
 	.key-legend { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-	.key-sample { grid-template-columns: 52px minmax(0, 1fr); column-gap: 12px; }
+	.key-sample { grid-template-columns: minmax(52px, max-content) minmax(0, 1fr); column-gap: 12px; }
+	/* The days sample stacks like the rows' boxed runs, so it fits the rank column */
+	.key-days .run { display: inline-flex; flex-direction: column; align-items: center; padding: 4px 6px 3px; }
+	.key-days .run .on-l { margin: 2px 0 0; font-size: 13px; }
 	.key-bars { display: none; }
 	.heads { padding: 12px 0 7px; letter-spacing: .06em; }
 	.heads, .row { grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 12px; }

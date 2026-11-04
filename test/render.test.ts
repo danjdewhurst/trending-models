@@ -264,10 +264,22 @@ describe("freshness and fonts", () => {
 		expect(contrast(dark("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
 		// On the dark sheet the NEW tag is cyan text in a cyan outline
 		expect(contrast(dark("cyan"), dark("sheet"))).toBeGreaterThanOrEqual(7);
-		// Light --pos is var(--ink), so it falls back to ink
-		for (const t of [light, dark]) {
-			for (const fg of ["ink", "muted", "pos"]) expect(contrast(t("sheet"), t(fg) || t("ink"))).toBeGreaterThanOrEqual(7);
+		// Light --pos is var(--ink), so only it falls back to ink; any other token must be a hex colour
+		expect(html).toContain("--pos: var(--ink);");
+		for (const [t, fgs] of [[light, ["ink", "muted"]], [dark, ["ink", "muted", "pos"]]] as const) {
+			for (const fg of fgs) {
+				expect(t(fg), `--${fg}`).toMatch(/^#/);
+				expect(contrast(t("sheet"), t(fg))).toBeGreaterThanOrEqual(7);
+			}
 		}
+		// The light NEW tag is ink on a 42% cyan tint of the sheet
+		expect(html).toContain("background: color-mix(in srgb, var(--cyan) 42%, var(--sheet));");
+		const mix = (a: string, b: string, p: number) =>
+			`#${[1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * p + parseInt(b.slice(i, i + 2), 16) * (1 - p)).toString(16).padStart(2, "0")).join("")}`;
+		expect(contrast(mix(light("cyan"), "#ffffff", 0.42), light("ink"))).toBeGreaterThanOrEqual(7);
+		// A boxed run prints sheet-coloured text on ink, so its count and unit must not keep the ink colour
+		expect(html).toContain(".run { display: inline-block; padding: 3px 6px 2px; background: var(--ink); color: var(--sheet);");
+		expect(html).toContain(".run .on-n, .run .on-l { color: inherit; }");
 	});
 
 	it("prints the favicon in the light cyan, and uses no other spot colour", () => {
