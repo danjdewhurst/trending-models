@@ -10,12 +10,12 @@ export function isStale(fetchedAt: string, now: Date): boolean {
 // Link previews need absolute URLs. The workers.dev address points here too
 export const SITE_URL = "https://models.ddewhurst.com";
 // Part of the page's ETag: bump it when the markup or the CSS changes, so browsers don't revalidate an old page to 304
-export const RENDER_VERSION = "2";
+export const RENDER_VERSION = "3";
 const TITLE = "Trending Models: Hugging Face trending, with memory";
 const DESCRIPTION =
 	"The models trending on Hugging Face right now, charted every four hours with how many days each has trended.";
 // public/og.png, made from scripts/og-image.html
-const OG_IMAGE_ALT = "Trending Models, printed as a cyan and black singles chart with positions, days on and trending scores.";
+const OG_IMAGE_ALT = "Trending Models, printed as a cyan, pink and black singles chart with positions, days on and trending scores.";
 
 // "Days on" grows with a run, so staying power reads at a glance: a run this long prints boxed in ink,
 // and a long run prints larger in its box
@@ -23,7 +23,7 @@ const MID_RUN = 4;
 const LONG_RUN = 7;
 
 // Hugging Face lists models by trending score, so its own order is already the score order: No. 1 has
-// the top score, and the page needs no second order or top-score mark
+// the top score, and the page needs no second order. No. 1's cyan band marks the top score
 export function renderPage(snapshot: Snapshot | null, now = new Date()): string {
 	const models = snapshot?.models ?? [];
 	const newCount = models.filter((m) => m.isNew).length;
@@ -245,6 +245,10 @@ ${fontFace("Archivo", "archivo-v25-latin.woff2", "400 800", LATIN)}
 ${fontFace("Archivo", "archivo-v25-latin-ext.woff2", "400 800", LATIN_EXT)}
 :root {
 	--cyan: #20d4e6;
+	/* Score bars: chart cyan is too pale for a thin mark on white, so the light sheet prints them a deeper cyan */
+	--bar: #0c8796;
+	/* The second spot colour, for NEW only */
+	--pink: #ff3d8b;
 	--black: #111;
 	--sheet: #fff;
 	--ink: #111;
@@ -263,6 +267,8 @@ ${fontFace("Archivo", "archivo-v25-latin-ext.woff2", "400 800", LATIN_EXT)}
 		--sheet: #161513;
 		/* Full-strength cyan glares as a big block on a dark sheet, so it prints a step deeper */
 		--cyan: #2cc0cf;
+		--bar: var(--cyan);
+		--pink: #f2508f;
 		--ink: #e8e4da;
 		--muted: #d2cec4;
 		--rule: #42403b;
@@ -288,8 +294,8 @@ body {
 	body { font-weight: 450; -webkit-font-smoothing: auto; }
 	h1, .when-ago, .pos, .on-n, .gain-n, .empty-title { -webkit-font-smoothing: antialiased; }
 	/* Dark type on a light ground prints as it does in light mode */
-	.mast { font-weight: 400; }
-	.mast, .stale, .stamp { -webkit-font-smoothing: antialiased; }
+	.mast, .row.one { font-weight: 400; }
+	.mast, .row.one, .stale, .stamp { -webkit-font-smoothing: antialiased; }
 }
 ::selection { background: var(--cyan); color: var(--black); }
 p { margin: 0; text-wrap: pretty; }
@@ -362,7 +368,7 @@ h1 {
 .key-days .on-n { font-size: 17px; }
 .key-days .on-n.mid { font-size: 16px; }
 .key-bar { display: flex; width: 56px; height: 7px; background: color-mix(in srgb, var(--ink) 12%, transparent); }
-.key-bar span { width: 50%; background: var(--ink); }
+.key-bar span { width: 50%; background: var(--bar); }
 
 main { padding-top: 0; }
 .chart { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
@@ -455,31 +461,46 @@ main { padding-top: 0; }
 .facts { margin-top: 3px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
 .gain { text-align: right; padding-top: 1px; }
 .gain-n { display: inline-block; font: 800 24px/.9 var(--display); }
-/* A bar under each score, scaled to the top score, so scores compare at a glance */
+/* A cyan bar under each score, scaled to the top score, so scores compare at a glance
+   and the masthead's colour runs down the chart */
 .bar { display: flex; height: 7px; margin-top: 6px; background: color-mix(in srgb, var(--ink) 12%, transparent); }
-.bar span { background: var(--ink); }
+.bar span { background: var(--bar); }
 
-/* No. 1 leads with a bigger rank figure, on the same sheet as the rest */
+/* No. 1 prints on a cyan band, the masthead's colour, in black type. The tokens remap inside it,
+   so every element keeps its role: grey text is a deep cyan, boxed runs print cyan on black */
+.row.one, .row.one:hover {
+	--ink: var(--black);
+	--pos: var(--black);
+	--muted: #06272a;
+	--sheet: var(--cyan);
+	background: var(--cyan);
+	color: var(--ink);
+	border-bottom-color: var(--black);
+}
+.one .bar span { background: var(--black); }
+.row.one ::selection { background: var(--black); color: var(--cyan); }
+/* All type on the band is black, so the name's underline is stronger to still say "link" */
+.row.one .model { text-decoration-color: color-mix(in srgb, currentColor 60%, transparent); }
+.row.one:hover .model, .row.one .name:hover .model { text-decoration-color: currentColor; }
+/* Pink on cyan barely separates, so a NEW tag on the band gets a black edge */
+.row.one .stamp { box-shadow: inset 0 0 0 1.5px var(--black); }
+/* The band closes with its black rule even when it is the last row in a column */
+.col:last-child .row.one:last-child, .rows .row.one:last-child { border-bottom: 1px solid var(--black); }
 .one .pos { font-size: 44px; color: var(--ink); }
 .one .on { padding-top: 8px; }
 
 .stamp {
 	display: inline-block;
-	/* A small tag tinted with the masthead's cyan: it marks a first day without
-	   turning a chart that is mostly new into a cyan stripe */
+	/* A small pink tag, the one place the second spot colour prints */
 	padding: 3px 5px 2px;
-	background: color-mix(in srgb, var(--cyan) 42%, var(--sheet));
-	color: var(--ink);
+	background: var(--pink);
+	color: var(--black);
 	font: 800 15px/1 var(--display);
 	letter-spacing: .06em;
 	text-transform: uppercase;
 	animation: stamp .42s cubic-bezier(.16, 1, .3, 1) both;
 }
 .stamp-key { animation: none; }
-@media (prefers-color-scheme: dark) {
-	/* A cyan block shouts on the dark sheet, so NEW prints as a cyan outline */
-	.stamp { background: none; color: var(--cyan); box-shadow: inset 0 0 0 1.5px var(--cyan); }
-}
 @keyframes stamp {
 	from { transform: scale(1.9); }
 	to { transform: scale(1); }
@@ -612,6 +633,10 @@ footer {
 	.bar { display: none; }
 	.one .pos { font-size: 44px; }
 	.one .on { margin-top: 43px; padding-top: 0; }
+	/* Phone rows have no side padding, so the band reaches into the gutter to keep its type off the edge */
+	.row.one { margin: 0 -10px; padding: 14px 10px; }
+	/* The stuck heads cover that reach too, so the band never shows beside them as it scrolls under */
+	.heads::before { content: ""; position: absolute; inset: 0 -10px; z-index: -1; background: var(--sheet); }
 	/* The score sits level with the model name, not the author line above it */
 	.gain { align-self: end; }
 	/* Taps land on the name even a little off the text */
