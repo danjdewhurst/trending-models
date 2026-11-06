@@ -176,9 +176,9 @@ There is no client script. Motion is one gesture: the NEW tag presses onto the s
 A three-ink trade-paper palette (cyan, pink and ink) on a white or near-black sheet. Greys are steps of the ink, not new colours, except Band Grey, a shade of cyan for grey text inside the No. 1 band.
 
 ### Primary
-- **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the text-selection highlight, the light `theme-color` and the favicon.
+- **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the text-selection highlight (reversed to cyan on black inside the masthead and the No. 1 band), the light `theme-color` and the favicon.
 - **Bar Cyan** (`bar-cyan`, `--bar`): the score bars and the key's bar sample on the light sheet. Chart Cyan is too pale for a 7px mark on white (1.4:1 on the track), so the bars print a deeper cyan that keeps 3:1 on the track, also on a hovered row.
-- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars (`--bar` is Night Chart Cyan on the dark sheet), the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
+- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars (`--bar` is Night Chart Cyan on the dark sheet), the selection highlight (reversed inside the masthead and the No. 1 band) and the dark `theme-color`. The favicon keeps Chart Cyan.
 
 ### Secondary
 - **Stamp Pink** (`stamp-pink`): the NEW tag's ground, with black type (5.7:1). It prints on nothing else.
@@ -280,7 +280,7 @@ Square corners throughout (0px): the NEW tag, days boxes and score bars (7px hig
 ## Components
 
 ### Masthead
-Chart cyan band with ink type, closed by a 6px ink rule. Title left; strapline ("Hugging Face trending, with memory") and a one-line description centre (max 54ch); dateline right: an "Updated" label, then the age in display caps ("2 HOURS AGO"), then "Chart of Wed 4 Nov 2026, 16:00 UTC" with the time in a `<time>` element. The age leads because it needs no time-zone sums. The dateline is omitted when there is no snapshot or the timestamp does not parse.
+Chart cyan band with black type, closed by a 6px black rule. Text selected in it prints cyan on black, because the page's cyan selection would not show on the band. Title left; strapline ("Hugging Face trending, with memory") and a one-line description centre (max 54ch); dateline right: an "Updated" label, then the age in display caps ("2 HOURS AGO"), then "Chart of Wed 4 Nov 2026, 16:00 UTC" with the time in a `<time>` element. The age leads because it needs no time-zone sums. The dateline is omitted when there is no snapshot or the timestamp does not parse.
 
 ### Chart Key
 See Layout. Bold ink figures inside Press Grey prose; the NEW sample is static (no press motion).

@@ -298,6 +298,8 @@ body {
 	.mast, .row.one, .stale, .stamp { -webkit-font-smoothing: antialiased; }
 }
 ::selection { background: var(--cyan); color: var(--black); }
+/* The masthead is cyan already, so its selection reverses to black */
+.mast::selection, .mast ::selection { background: var(--black); color: var(--cyan); }
 p { margin: 0; text-wrap: pretty; }
 /* One underline for every link: thin, offset, a quiet tint of the text colour that goes solid on hover */
 a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
@@ -635,7 +637,8 @@ footer {
 	.one .on { margin-top: 43px; padding-top: 0; }
 	/* Phone rows have no side padding, so the band reaches into the gutter to keep its type off the edge */
 	.row.one { margin: 0 -10px; padding: 14px 10px; }
-	/* The stuck heads cover that reach too, so the band never shows beside them as it scrolls under */
+	/* The stuck heads cover that reach too, so the band never shows beside them as it scrolls under.
+	   The pieces match the band's 10px reach and run down past the heads' 3px rule */
 	.heads::before, .heads::after { content: ""; position: absolute; top: 0; bottom: -3px; width: 10px; background: var(--sheet); }
 	.heads::before { left: -10px; }
 	.heads::after { right: -10px; }
