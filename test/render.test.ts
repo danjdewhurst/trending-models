@@ -269,6 +269,9 @@ describe("freshness and fonts", () => {
 			`#${[1, 3, 5].map((i) => Math.round(parseInt(hex6(a).slice(i, i + 2), 16) * p + parseInt(hex6(b).slice(i, i + 2), 16) * (1 - p)).toString(16).padStart(2, "0")).join("")}`;
 		expect(html).toContain("--bar: var(--cyan);");
 		expect(contrast(light("bar"), mix(light("ink"), light("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
+		// The track is see-through, so a hovered row's wash shows through it
+		expect(contrast(light("bar"), mix(light("ink"), light("hover"), 0.12))).toBeGreaterThanOrEqual(3);
+		expect(contrast(dark("cyan"), mix(dark("ink"), dark("hover"), 0.12))).toBeGreaterThanOrEqual(3);
 		expect(contrast(dark("cyan"), mix(dark("ink"), dark("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
 		expect(html).toContain(".bar span { background: var(--bar); }");
 		// Light --pos is var(--ink), so only it falls back to ink; any other token must be a hex colour

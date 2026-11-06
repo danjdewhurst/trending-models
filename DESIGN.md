@@ -3,7 +3,7 @@ name: Trending Models
 description: Hugging Face trending printed as a three-ink trade-paper singles chart (cyan, pink and black), with memory.
 colors:
   chart-cyan: "#20d4e6"
-  bar-cyan: "#0c8796"
+  bar-cyan: "#0a7d8b"
   stamp-pink: "#ff3d8b"
   band-muted: "#06272a"
   ink: "#111"
@@ -177,7 +177,7 @@ A three-ink trade-paper palette (cyan, pink and ink) on a white or near-black sh
 
 ### Primary
 - **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the text-selection highlight, the light `theme-color` and the favicon.
-- **Bar Cyan** (`bar-cyan`, `--bar`): the score bars and the key's bar sample on the light sheet. Chart Cyan is too pale for a 7px mark on white (1.4:1 on the track), so the bars print a deeper cyan that keeps 3:1 on the track.
+- **Bar Cyan** (`bar-cyan`, `--bar`): the score bars and the key's bar sample on the light sheet. Chart Cyan is too pale for a 7px mark on white (1.4:1 on the track), so the bars print a deeper cyan that keeps 3:1 on the track, also on a hovered row.
 - **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars (`--bar` is Night Chart Cyan on the dark sheet), the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
 
 ### Secondary
@@ -202,7 +202,7 @@ The dark sheet is newsprint at night, not white on black. Pure white on near-bla
 - Cyan steps down to `chart-cyan-dark` (`#2cc0cf`). Full-strength cyan on the near-black sheet is the brightest thing on the page by far, and it glares. Ink #111 on it stays above 8:1. Do not push the dark cyan back to `#20d4e6`. The No. 1 band is the one large cyan block inside the dark chart. It is deliberate: the chart's top score earns the masthead's colour.
 - The NEW tag fills on both sheets, in Night Stamp Pink on the dark one. It is a small tag, so it does not glare as a cyan block would.
 - Rank numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores outside the No. 1 band stay full Ink, because they lead the row with the name.
-- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, Night Chart Cyan at 7:1 or more on the dark sheet, black on both pinks at 4.5:1 or more, Band Grey and black on both cyans at 7:1 or more, and the score bars at 3:1 or more on their track on both sheets.
+- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, Night Chart Cyan at 7:1 or more on the dark sheet, black on both pinks at 4.5:1 or more, Band Grey and black on both cyans at 7:1 or more, and the score bars at 3:1 or more on their track, plain and hovered, on both sheets.
 
 ### Named Rules
 **The Pink Means New Rule.** Pink means "first day on Hugging Face trending" and nothing else. Long runs print in ink, never pink.
@@ -262,7 +262,7 @@ The page is a centred sheet, max 1440px, with 40px side gutters (16px at 640px a
 
 **Tablet (641 to 1100px).** One chart column; the second list's column heads are hidden so the chart reads as one continuous sheet. "author / name" sits on one line. The meta line wraps, and downloads show.
 
-**Phone (640px and below).** Three columns: 52px left, flexible body, auto score, with 12px gaps; rows pad 14px top and bottom with no side padding. The No. 1 band pads 10px at the sides and reaches 10px into the gutter, and the stuck column heads cover that reach so the band never shows beside them. Days on sits right under the rank in the left column, and its head ("Days") sits under "Rank". Boxed runs stack number over unit so a two-digit run fits. The author prints on its own line; the score aligns with the model name, not the author line. Downloads and score bars are hidden. Each fact keeps its words together with no-break spaces, so a date never splits across lines. The name link extends its tap area 10px by 6px. The footer stacks, and its links pad 10px top and bottom.
+**Phone (640px and below).** Three columns: 52px left, flexible body, auto score, with 12px gaps; rows pad 14px top and bottom with no side padding. The No. 1 band pads 10px at the sides and reaches 10px into the gutter, and the stuck column heads cover that reach, beside their 3px rule too, so the band never shows beside them. Days on sits right under the rank in the left column, and its head ("Days") sits under "Rank". Boxed runs stack number over unit so a two-digit run fits. The author prints on its own line; the score aligns with the model name, not the author line. Downloads and score bars are hidden. Each fact keeps its words together with no-break spaces, so a date never splits across lines. The name link extends its tap area 10px by 6px. The footer stacks, and its links pad 10px top and bottom.
 
 ## Elevation & Depth
 
