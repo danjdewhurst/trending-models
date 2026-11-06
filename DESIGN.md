@@ -1,9 +1,10 @@
 ---
 name: Trending Models
-description: Hugging Face trending printed as a two-colour trade-paper singles chart, with memory.
+description: Hugging Face trending printed as a three-ink trade-paper singles chart (cyan, pink and black), with memory.
 colors:
   chart-cyan: "#20d4e6"
-  new-tint: "#a1edf5"
+  stamp-pink: "#ff3d8b"
+  band-muted: "#0d3b40"
   ink: "#111"
   sheet: "#fff"
   muted: "#444"
@@ -11,6 +12,7 @@ colors:
   hover-wash: "#e0f8fa"
   sheet-dark: "#161513"
   chart-cyan-dark: "#2cc0cf"
+  stamp-pink-dark: "#f2508f"
   ink-dark: "#e8e4da"
   muted-dark: "#d2cec4"
   rule-dark: "#42403b"
@@ -115,6 +117,11 @@ components:
     padding: "12px 10px"
   chart-row-hover:
     backgroundColor: "{colors.hover-wash}"
+  chart-row-one:
+    backgroundColor: "{colors.chart-cyan}"
+    textColor: "{colors.ink}"
+  score-bar:
+    backgroundColor: "{colors.chart-cyan}"
   days-run:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.sheet}"
@@ -122,14 +129,14 @@ components:
     rounded: "{rounded.none}"
     padding: "3px 6px 2px"
   stamp-new:
-    backgroundColor: "{colors.new-tint}"
+    backgroundColor: "{colors.stamp-pink}"
     textColor: "{colors.ink}"
     typography: "{typography.stamp}"
     rounded: "{rounded.none}"
     padding: "3px 5px 2px"
   stamp-new-dark:
-    backgroundColor: "{colors.sheet-dark}"
-    textColor: "{colors.chart-cyan-dark}"
+    backgroundColor: "{colors.stamp-pink-dark}"
+    textColor: "{colors.ink}"
   stale-strip:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.sheet}"
@@ -139,13 +146,13 @@ components:
 
 # Design System: Trending Models
 
-This design comes from the sibling project trending-repos (GitHub trending). This page keeps its system, but prints in cyan instead of yellow so the two charts read as a pair and are not confused. It changes only what the data and the colour need. The differences are listed at the end, under "Differences from Trending Repos".
+This design comes from the sibling project trending-repos (GitHub trending). This page keeps its system, but prints in cyan instead of yellow so the two charts read as a pair and are not confused. On 2026-11-06 colour came back into the chart: cyan score bars, a cyan No. 1 band and a pink NEW tag. It changes only what the data and the colour need. The differences are listed at the end, under "Differences from Trending Repos".
 
 ## Overview
 
 **Creative North Star: "The Trade-Paper Chart Sheet"**
 
-The page is a printed singles chart, not a list of cards. A cyan masthead band carries the title, the strapline and the dateline, which leads with how long ago the chart was updated. Below it, a key strip gives the totals and a legend. Then a dense numbered sheet prints four columns per row: rank, days on, the model, and its trending score. Two inks do all the work: chart cyan and ink black on a white sheet. Hierarchy comes from condensed display numerals at very different sizes, heavy and hairline rules, and small reversed ink boxes that mark the facts worth a second look.
+The page is a printed singles chart, not a list of cards. A cyan masthead band carries the title, the strapline and the dateline, which leads with how long ago the chart was updated. Below it, a key strip gives the totals and a legend. Then a dense numbered sheet prints four columns per row: rank, days on, the model, and its trending score. Three inks do the work: chart cyan and ink black on a white sheet, with pink as a second spot colour for NEW. Cyan runs down the chart in the score bars and the No. 1 band, so the masthead's colour does not stop at the masthead. Hierarchy comes from condensed display numerals at very different sizes, heavy and hairline rules, and small reversed ink boxes that mark the facts worth a second look.
 
 The chart keeps Hugging Face's own order, which is already the trending-score order, so No. 1 has the top score and the scores and their bars read high to low. Memory is the point of difference: the "Days on" column counts the days each model has trended, and long runs print boxed in ink so staying power reads down the column at a glance.
 
@@ -154,7 +161,7 @@ Density is the point. On wide screens the sheet prints two columns at chart dens
 There is no client script. Motion is one gesture: the NEW tag presses onto the sheet once on load.
 
 **Key Characteristics:**
-- Chart cyan masthead band; white sheet; ink #111. Inside the chart, cyan marks NEW only.
+- Chart cyan masthead band; white sheet; ink #111. Inside the chart, cyan prints the score bars and the No. 1 band; pink prints NEW.
 - Condensed Big Shoulders Display numerals for ranks, scores, days on and the dateline's age; Archivo for all text.
 - Ruled, not boxed: hairline row rules, a 3px rule under column heads and over the footer, a 6px rule under the masthead, a 2px ink divider between the desktop columns.
 - Reversed ink boxes for runs of 4 days or more.
@@ -163,18 +170,23 @@ There is no client script. Motion is one gesture: the NEW tag presses onto the s
 
 ## Colors
 
-A two-colour trade-paper palette (cyan and ink) on a white or near-black sheet. Greys are steps of the ink, not new colours.
+A three-ink trade-paper palette (cyan, pink and ink) on a white or near-black sheet. Greys are steps of the ink, not new colours.
 
 ### Primary
-- **Chart Cyan** (`chart-cyan`): the masthead band, the text-selection highlight, the light `theme-color` and the favicon. The NEW tag on the light sheet is a 42% tint of it on the sheet (`new-tint`, from `color-mix(in srgb, var(--cyan) 42%, var(--sheet))`), so a chart with many new models does not turn into a cyan stripe.
-- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the NEW tag outline, the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
+- **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the score bars (and the key's bar sample), the text-selection highlight, the light `theme-color` and the favicon.
+- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars, the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
+
+### Secondary
+- **Stamp Pink** (`stamp-pink`): the NEW tag's ground, with black type (5.7:1). It prints on nothing else.
+- **Night Stamp Pink** (`stamp-pink-dark`): Stamp Pink a step deeper on the dark sheet, still with black type.
 
 ### Neutral
-- **Ink** (`ink`, also `--black` for type on cyan): all primary text, rank and days numerals, scores, the task, the masthead type and rule, the column-head and footer rules, the column divider, score bars, focus outlines, and the ground of every reversed box (days runs, the stale strip).
+- **Ink** (`ink`, also `--black` for type on cyan): all primary text, rank and days numerals, scores, the task, the masthead type and rule, the column-head and footer rules, the column divider, score bar tracks (at 12%), the No. 1 score bar, focus outlines, and the ground of every reversed box (days runs, the stale strip).
 - **Sheet** (`sheet`): the page background, and the text in every reversed ink box.
 - **Press Grey** (`muted`): secondary text: the author, the meta line (parameters, likes, downloads), the facts line, the chart key's prose, footer prose and the "–" no-history mark.
 - **Hairline** (`rule`): 1px row rules and the key strip's bottom rule.
 - **Cyan Wash** (`hover-wash`): row hover.
+- **Band Grey** (`band-muted`): a deep cyan for Press Grey's role inside the No. 1 band (6.5:1 on Chart Cyan, 5.5:1 on Night Chart Cyan).
 - **Dark sheet set** (`sheet-dark`, `ink-dark`, `muted-dark`, `rule-dark`, `hover-wash-dark`): the same roles under `prefers-color-scheme: dark`.
 - **Night Position Grey** (`position-dark`): rank numerals on the dark sheet, except No. 1, which prints in full ink. In light mode ranks print in Ink.
 
@@ -183,14 +195,16 @@ The dark sheet is newsprint at night, not white on black. Pure white on near-bla
 - Ink is a warm off-white (`#e8e4da`, 14:1 on the sheet) on a lifted warm sheet (`#161513`). Do not push ink back to white or the sheet to black.
 - Text set in Archivo on the dark sheet prints at weight 450 instead of 400, and uses the platform's default font smoothing. Display numerals (title, age, ranks, days, scores, empty title) keep `antialiased`, so the heavy figures stay crisp. Dark type on light grounds (the masthead, the stale strip) keeps the light-mode weight and smoothing.
 - Cyan steps down to `chart-cyan-dark` (`#2cc0cf`). Full-strength cyan on the near-black sheet is the brightest thing on the page by far, and it glares. Ink #111 on it stays above 8:1. Do not push the dark cyan back to `#20d4e6`.
-- The NEW tag does not fill on the dark sheet: it prints as a 1.5px Night Chart Cyan outline with cyan text (8:1 on the sheet).
+- The NEW tag fills on both sheets, in Night Stamp Pink on the dark one. It is a small tag, so it does not glare as a cyan block would.
 - Rank numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores stay full Ink, because they lead the row with the name.
-- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, and Night Chart Cyan at 7:1 or more on the dark sheet.
+- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, Night Chart Cyan at 7:1 or more on the dark sheet, black on both pinks at 4.5:1 or more, and Band Grey on both cyans at 4.5:1 or more.
 
 ### Named Rules
-**The Cyan Means New Rule.** Inside the chart, a cyan mark means "first day on Hugging Face trending" and nothing else. Long runs print in ink, never cyan. The row hover wash is a tint, not a mark.
+**The Pink Means New Rule.** Pink means "first day on Hugging Face trending" and nothing else. Long runs print in ink, never pink.
 
-**The Two-Ink Rule.** Everything prints in cyan and ink. There is no third colour and no image: the page prints no avatars.
+**The Cyan Is the Chart Rule.** Inside the chart, cyan belongs to the score: the bars and the No. 1 band (the top score). It never marks a state. The row hover wash is a tint, not a mark.
+
+**The Three-Ink Rule.** Everything prints in cyan, pink and ink. There is no fourth colour and no image: the page prints no avatars.
 
 ## Typography
 
@@ -247,7 +261,7 @@ The page is a centred sheet, max 1440px, with 40px side gutters (16px at 640px a
 
 ## Elevation & Depth
 
-The system is flat. There are no shadows. Depth comes from print devices: rule weight (1px hairline, 2px column divider, 3px head and footer rules, 6px masthead rule), solid bands of colour, and small reversed ink boxes. The one `box-shadow` in the build is the dark NEW tag's 1.5px inset outline, a stroke with no offset or blur.
+The system is flat. There are no shadows. Depth comes from print devices: rule weight (1px hairline, 2px column divider, 3px head and footer rules, 6px masthead rule), solid bands of colour, and small reversed ink boxes. The build has no `box-shadow`.
 
 ### Named Rules
 **The Rules, Not Boxes Rule.** Separate content with rules of graded weight. Do not use cards, borders on four sides, or shadows.
@@ -274,8 +288,8 @@ When the snapshot is more than 12 hours old (three missed runs), a full-width st
 - **Model link:** one link, "author / name". The author is weight 500 in Press Grey; only the name is underlined (1px, 3px offset, 45% of the text colour), and the underline goes solid on row hover. A long pair breaks before the name, never inside it. A bare id (no author) prints the name only. The link's `title` repeats "author / name".
 - **Meta line:** task (ink, 700), parameter count ("1.73B params"), compact likes, compact downloads (last 30 days). Compact figures carry the full figure in `title` and in screen-reader text.
 - **Facts line:** library, license, "gated" when access needs approval, and the creation date, joined by middle dots.
-- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (an empty track for a score of 0), in ink on a 12% ink track. Screen readers hear "trending score".
-- **No. 1:** prints on the same sheet as the rest, never reversed. Only its rank numeral is larger (44px), and it stays full ink on the dark sheet. It has the top score, so it needs no other mark.
+- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (an empty track for a score of 0), in Chart Cyan on a 12% ink track. Screen readers hear "trending score".
+- **No. 1:** prints on a Chart Cyan band, the masthead's colour, never reversed in ink. Its rank numeral is larger (44px). The band remaps the tokens: type is black, grey text is Band Grey, a boxed run prints cyan on black, and the score bar prints in black. The band keeps its colour on hover, closes with a 1px black rule, and on phones reaches 10px into the gutter so its type does not touch the edge. Text selection inside it is black with cyan text.
 - **Hover:** cyan wash background and a solid underline on the name.
 - **Focus:** the row draws a 2px ink outline inset 2px when its name link has focus. Other links use a 2px currentColor outline, offset 2px.
 - **Degrades quietly:** a missing task, parameter count or fact removes its element.
@@ -288,7 +302,7 @@ When the snapshot is more than 12 hours old (three missed runs), a full-width st
 - **No history:** a Press Grey "–" with screen-reader text "No history yet".
 
 ### NEW Tag
-A small uppercase tag in Big Shoulders 800, 15px, 0.06em, padding 3px 5px 2px. Light sheet: `new-tint` ground with ink text. Dark sheet: no fill, Night Chart Cyan text and a 1.5px inset outline. On load it presses onto the sheet: scale 1.9 to 1 in 0.42s, `cubic-bezier(.16, 1, .3, 1)`, staggered 40ms per position (capped at position 25). The animation is disabled under `prefers-reduced-motion: reduce`, and on the key's legend sample.
+A small uppercase tag in Big Shoulders 800, 15px, 0.06em, padding 3px 5px 2px: Stamp Pink ground with black text (Night Stamp Pink on the dark sheet). On load it presses onto the sheet: scale 1.9 to 1 in 0.42s, `cubic-bezier(.16, 1, .3, 1)`, staggered 40ms per position (capped at position 25). The animation is disabled under `prefers-reduced-motion: reduce`, and on the key's legend sample.
 
 ### Empty State
 "No trending data yet." in uppercase display at 48px, then one line saying the first chart is compiled on the next 4-hour run. The key strip is omitted; the dateline shows when a snapshot exists.
@@ -303,13 +317,13 @@ The two pages share tokens, type, rules, the days-on boxes, the NEW tag, the dat
 - **One order, no switch.** GitHub's trending order is not its stars-today order, so trending-repos ranks by stars today and keeps GitHub's order behind a "Rank by" switch. Hugging Face's order is the trending-score order, so this page has one order, and no top-gain chip.
 - **No descriptions, homepages or topics.** The Hugging Face list has none of them. The facts line (library, license, gated, created) takes the description's place under the row.
 - **The author stacks at every desktop width**, and the name ends in an ellipsis, because model names run much longer than repository names.
-- **Cyan, not yellow**, for the band and for NEW.
+- **Cyan, not yellow**, for the band, the score bars and No. 1. NEW is pink on both pages.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** set every ranking figure (rank, days on, score, the dateline's age) in Big Shoulders Display, at sizes that keep rank largest.
-- **Do** keep cyan inside the chart for NEW only.
+- **Do** keep pink for NEW only, and cyan inside the chart for the score bars and the No. 1 band.
 - **Do** mark runs of 4 days or more with a reversed ink box.
 - **Do** separate rows with 1px hairlines and heads with a 3px ink rule.
 - **Do** keep the two-column chart in DOM order as two ordered lists, the second with `start`, and pair their rows with subgrid.
@@ -323,8 +337,8 @@ The two pages share tokens, type, rules, the days-on boxes, the NEW tag, the dat
 ### Don't:
 - **Don't** put models in cards, rounded boxes or shadowed panels.
 - **Don't** round corners.
-- **Don't** add a third palette colour.
-- **Don't** reverse the No. 1 row or mark the top score in cyan.
+- **Don't** add a fourth palette colour.
+- **Don't** reverse the No. 1 row in ink; it prints on cyan.
 - **Don't** print avatars; the author's name is enough.
 - **Don't** print a truncated fragment of a meta item; hide it whole.
 - **Don't** put uppercase tracked labels above section headings as decoration.

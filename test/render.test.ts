@@ -262,7 +262,7 @@ describe("freshness and fonts", () => {
 		// The masthead prints black on cyan in both schemes
 		expect(contrast(light("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
 		expect(contrast(dark("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
-		// On the dark sheet the NEW tag is cyan text in a cyan outline
+		// Score bars print cyan on the dark sheet, so they must stand out from it
 		expect(contrast(dark("cyan"), dark("sheet"))).toBeGreaterThanOrEqual(7);
 		// Light --pos is var(--ink), so only it falls back to ink; any other token must be a hex colour
 		expect(html).toContain("--pos: var(--ink);");
@@ -272,23 +272,28 @@ describe("freshness and fonts", () => {
 				expect(contrast(t("sheet"), t(fg))).toBeGreaterThanOrEqual(7);
 			}
 		}
-		// The light NEW tag is ink on a 42% cyan tint of the sheet
-		expect(html).toContain("background: color-mix(in srgb, var(--cyan) 42%, var(--sheet));");
-		const mix = (a: string, b: string, p: number) =>
-			`#${[1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * p + parseInt(b.slice(i, i + 2), 16) * (1 - p)).toString(16).padStart(2, "0")).join("")}`;
-		expect(contrast(mix(light("cyan"), "#ffffff", 0.42), light("ink"))).toBeGreaterThanOrEqual(7);
+		// The NEW tag prints black on pink in both schemes
+		expect(html).toMatch(/\.stamp \{[^}]*background: var\(--pink\);\s*color: var\(--black\);/);
+		expect(contrast(light("pink"), light("black"))).toBeGreaterThanOrEqual(4.5);
+		expect(contrast(dark("pink"), light("black"))).toBeGreaterThanOrEqual(4.5);
+		// The No. 1 band is cyan, with black type and a deep cyan for its grey text
+		const band = html.match(/\.row\.one, \.row\.one:hover \{([^}]+)\}/)?.[1] ?? "";
+		expect(band).toContain("--ink: var(--black);");
+		expect(band).toContain("background: var(--cyan);");
+		const bandMuted = band.match(/--muted: (#[0-9a-f]{6});/)?.[1] ?? "";
+		expect(bandMuted).toMatch(/^#/);
+		for (const cyan of [light("cyan"), dark("cyan")]) expect(contrast(cyan, bandMuted)).toBeGreaterThanOrEqual(4.5);
 		// A boxed run prints sheet-coloured text on ink, so its count and unit must not keep the ink colour
 		expect(html).toContain(".run { display: inline-block; padding: 3px 6px 2px; background: var(--ink); color: var(--sheet);");
 		expect(html).toContain(".run .on-n, .run .on-l { color: inherit; }");
 	});
 
-	it("prints the favicon in the light cyan, and uses no other spot colour", () => {
+	it("prints the favicon in the light cyan, and keeps pink for NEW only", () => {
 		const html = renderPage(null);
 		const cyan = html.match(/--cyan: (#[0-9a-f]{6});/)?.[1] ?? "";
 		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
-		// NEW prints in the masthead's cyan, so the old stamp pink is gone
-		expect(html).not.toContain("--pink");
-		expect(html).not.toMatch(/#ff3d8b/i);
+		// Pink is the second spot colour: the NEW tag is the only rule that uses it
+		expect(html.match(/var\(--pink\)/g)).toHaveLength(1);
 	});
 });
 
