@@ -269,6 +269,10 @@ describe("freshness and fonts", () => {
 			`#${[1, 3, 5].map((i) => Math.round(parseInt(hex6(a).slice(i, i + 2), 16) * p + parseInt(hex6(b).slice(i, i + 2), 16) * (1 - p)).toString(16).padStart(2, "0")).join("")}`;
 		expect(html).toContain("--bar: var(--cyan);");
 		expect(contrast(light("bar"), mix(light("ink"), light("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
+		// The track is see-through, so a hovered row's wash shows through it
+		expect(html).toContain(".row:hover { background: var(--hover); }");
+		expect(contrast(light("bar"), mix(light("ink"), light("hover"), 0.12))).toBeGreaterThanOrEqual(3);
+		expect(contrast(dark("cyan"), mix(dark("ink"), dark("hover"), 0.12))).toBeGreaterThanOrEqual(3);
 		expect(contrast(dark("cyan"), mix(dark("ink"), dark("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
 		expect(html).toContain(".bar span { background: var(--bar); }");
 		// Light --pos is var(--ink), so only it falls back to ink; any other token must be a hex colour
@@ -306,6 +310,17 @@ describe("freshness and fonts", () => {
 		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
 		// Pink is the second spot colour: the NEW tag is the only rule that uses it
 		expect(html.match(/var\(--pink\)/g) ?? []).toHaveLength(1);
+	});
+});
+
+describe("phone heads and selection", () => {
+	it("covers the No. 1 band's reach beside the stuck heads, and keeps masthead selection visible", () => {
+		const html = renderPage(null);
+		// The band reaches 10px into the gutter; the heads' side pieces match it and run past their 3px rule
+		expect(html).toContain(".row.one { margin: 0 -10px; padding: 14px 10px; }");
+		expect(html).toContain(".heads::before, .heads::after { content: \"\"; position: absolute; top: 0; bottom: -3px; width: 10px; background: var(--sheet); }");
+		// Cyan selection on the cyan masthead would not show
+		expect(html).toContain(".mast::selection, .mast ::selection { background: var(--black); color: var(--cyan); }");
 	});
 });
 

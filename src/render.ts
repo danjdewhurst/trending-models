@@ -10,7 +10,7 @@ export function isStale(fetchedAt: string, now: Date): boolean {
 // Link previews need absolute URLs. The workers.dev address points here too
 export const SITE_URL = "https://models.ddewhurst.com";
 // Part of the page's ETag: bump it when the markup or the CSS changes, so browsers don't revalidate an old page to 304
-export const RENDER_VERSION = "3";
+export const RENDER_VERSION = "4";
 const TITLE = "Trending Models: Hugging Face trending, with memory";
 const DESCRIPTION =
 	"The models trending on Hugging Face right now, charted every four hours with how many days each has trended.";
@@ -246,7 +246,7 @@ ${fontFace("Archivo", "archivo-v25-latin-ext.woff2", "400 800", LATIN_EXT)}
 :root {
 	--cyan: #20d4e6;
 	/* Score bars: chart cyan is too pale for a thin mark on white, so the light sheet prints them a deeper cyan */
-	--bar: #0c8796;
+	--bar: #0a7d8b;
 	/* The second spot colour, for NEW only */
 	--pink: #ff3d8b;
 	--black: #111;
@@ -298,6 +298,8 @@ body {
 	.mast, .row.one, .stale, .stamp { -webkit-font-smoothing: antialiased; }
 }
 ::selection { background: var(--cyan); color: var(--black); }
+/* The masthead is cyan already, so its selection reverses to black */
+.mast::selection, .mast ::selection { background: var(--black); color: var(--cyan); }
 p { margin: 0; text-wrap: pretty; }
 /* One underline for every link: thin, offset, a quiet tint of the text colour that goes solid on hover */
 a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
@@ -635,8 +637,11 @@ footer {
 	.one .on { margin-top: 43px; padding-top: 0; }
 	/* Phone rows have no side padding, so the band reaches into the gutter to keep its type off the edge */
 	.row.one { margin: 0 -10px; padding: 14px 10px; }
-	/* The stuck heads cover that reach too, so the band never shows beside them as it scrolls under */
-	.heads::before { content: ""; position: absolute; inset: 0 -10px; z-index: -1; background: var(--sheet); }
+	/* The stuck heads cover that reach too, so the band never shows beside them as it scrolls under.
+	   The pieces match the band's 10px reach and run down past the heads' 3px rule */
+	.heads::before, .heads::after { content: ""; position: absolute; top: 0; bottom: -3px; width: 10px; background: var(--sheet); }
+	.heads::before { left: -10px; }
+	.heads::after { right: -10px; }
 	/* The score sits level with the model name, not the author line above it */
 	.gain { align-self: end; }
 	/* Taps land on the name even a little off the text */
