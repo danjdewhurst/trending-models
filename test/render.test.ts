@@ -262,8 +262,15 @@ describe("freshness and fonts", () => {
 		// The masthead prints black on cyan in both schemes
 		expect(contrast(light("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
 		expect(contrast(dark("cyan"), light("black"))).toBeGreaterThanOrEqual(7);
-		// Score bars print cyan on the dark sheet, so they must stand out from it
-		expect(contrast(dark("cyan"), dark("sheet"))).toBeGreaterThanOrEqual(7);
+		// Score bars sit on a 12% ink track: they keep 3:1 against it on both sheets.
+		// The dark sheet prints them in its cyan; the light sheet needs a deeper one
+		const hex6 = (c: string) => (c.length === 4 ? `#${[...c.slice(1)].map((d) => d + d).join("")}` : c);
+		const mix = (a: string, b: string, p: number) =>
+			`#${[1, 3, 5].map((i) => Math.round(parseInt(hex6(a).slice(i, i + 2), 16) * p + parseInt(hex6(b).slice(i, i + 2), 16) * (1 - p)).toString(16).padStart(2, "0")).join("")}`;
+		expect(html).toContain("--bar: var(--cyan);");
+		expect(contrast(light("bar"), mix(light("ink"), light("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
+		expect(contrast(dark("cyan"), mix(dark("ink"), dark("sheet"), 0.12))).toBeGreaterThanOrEqual(3);
+		expect(html).toContain(".bar span { background: var(--bar); }");
 		// Light --pos is var(--ink), so only it falls back to ink; any other token must be a hex colour
 		expect(html).toContain("--pos: var(--ink);");
 		for (const [t, fgs] of [[light, ["ink", "muted"]], [dark, ["ink", "muted", "pos"]]] as const) {
@@ -279,10 +286,15 @@ describe("freshness and fonts", () => {
 		// The No. 1 band is cyan, with black type and a deep cyan for its grey text
 		const band = html.match(/\.row\.one, \.row\.one:hover \{([^}]+)\}/)?.[1] ?? "";
 		expect(band).toContain("--ink: var(--black);");
+		// A boxed run prints --sheet on --ink, so inside the band it must be cyan on black
+		expect(band).toContain("--sheet: var(--cyan);");
 		expect(band).toContain("background: var(--cyan);");
 		const bandMuted = band.match(/--muted: (#[0-9a-f]{6});/)?.[1] ?? "";
 		expect(bandMuted).toMatch(/^#/);
-		for (const cyan of [light("cyan"), dark("cyan")]) expect(contrast(cyan, bandMuted)).toBeGreaterThanOrEqual(4.5);
+		for (const cyan of [light("cyan"), dark("cyan")]) {
+			expect(contrast(cyan, bandMuted)).toBeGreaterThanOrEqual(7);
+			expect(contrast(cyan, light("black"))).toBeGreaterThanOrEqual(7);
+		}
 		// A boxed run prints sheet-coloured text on ink, so its count and unit must not keep the ink colour
 		expect(html).toContain(".run { display: inline-block; padding: 3px 6px 2px; background: var(--ink); color: var(--sheet);");
 		expect(html).toContain(".run .on-n, .run .on-l { color: inherit; }");
@@ -293,7 +305,7 @@ describe("freshness and fonts", () => {
 		const cyan = html.match(/--cyan: (#[0-9a-f]{6});/)?.[1] ?? "";
 		expect(html).toContain(encodeURIComponent(`fill="${cyan}"`));
 		// Pink is the second spot colour: the NEW tag is the only rule that uses it
-		expect(html.match(/var\(--pink\)/g)).toHaveLength(1);
+		expect(html.match(/var\(--pink\)/g) ?? []).toHaveLength(1);
 	});
 });
 

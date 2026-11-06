@@ -3,8 +3,9 @@ name: Trending Models
 description: Hugging Face trending printed as a three-ink trade-paper singles chart (cyan, pink and black), with memory.
 colors:
   chart-cyan: "#20d4e6"
+  bar-cyan: "#0c8796"
   stamp-pink: "#ff3d8b"
-  band-muted: "#0d3b40"
+  band-muted: "#06272a"
   ink: "#111"
   sheet: "#fff"
   muted: "#444"
@@ -121,7 +122,9 @@ components:
     backgroundColor: "{colors.chart-cyan}"
     textColor: "{colors.ink}"
   score-bar:
-    backgroundColor: "{colors.chart-cyan}"
+    backgroundColor: "{colors.bar-cyan}"
+  score-bar-dark:
+    backgroundColor: "{colors.chart-cyan-dark}"
   days-run:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.sheet}"
@@ -170,34 +173,36 @@ There is no client script. Motion is one gesture: the NEW tag presses onto the s
 
 ## Colors
 
-A three-ink trade-paper palette (cyan, pink and ink) on a white or near-black sheet. Greys are steps of the ink, not new colours.
+A three-ink trade-paper palette (cyan, pink and ink) on a white or near-black sheet. Greys are steps of the ink, not new colours, except Band Grey, a shade of cyan for grey text inside the No. 1 band.
 
 ### Primary
-- **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the score bars (and the key's bar sample), the text-selection highlight, the light `theme-color` and the favicon.
-- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars, the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
+- **Chart Cyan** (`chart-cyan`): the masthead band, the No. 1 band, the text-selection highlight, the light `theme-color` and the favicon.
+- **Bar Cyan** (`bar-cyan`, `--bar`): the score bars and the key's bar sample on the light sheet. Chart Cyan is too pale for a 7px mark on white (1.4:1 on the track), so the bars print a deeper cyan that keeps 3:1 on the track.
+- **Night Chart Cyan** (`chart-cyan-dark`): Chart Cyan under `prefers-color-scheme: dark`, for the masthead, the No. 1 band, the score bars (`--bar` is Night Chart Cyan on the dark sheet), the selection highlight and the dark `theme-color`. The favicon keeps Chart Cyan.
 
 ### Secondary
 - **Stamp Pink** (`stamp-pink`): the NEW tag's ground, with black type (5.7:1). It prints on nothing else.
-- **Night Stamp Pink** (`stamp-pink-dark`): Stamp Pink a step deeper on the dark sheet, still with black type.
+- **Night Stamp Pink** (`stamp-pink-dark`): Stamp Pink a little softer on the dark sheet, at the same lightness, still with black type.
 
 ### Neutral
-- **Ink** (`ink`, also `--black` for type on cyan): all primary text, rank and days numerals, scores, the task, the masthead type and rule, the column-head and footer rules, the column divider, score bar tracks (at 12%), the No. 1 score bar, focus outlines, and the ground of every reversed box (days runs, the stale strip).
+- **Ink** (`ink`): all primary text, rank and days numerals, scores, the task, the masthead rule, the column-head and footer rules, the column divider, score bar tracks (at 12%), focus outlines, and the ground of every reversed box (days runs, the stale strip).
+- **Black** (`--black`, #111 in both schemes): type on cyan and pink (the masthead, the No. 1 band, the NEW tag). Inside the No. 1 band, `--ink` is Black, so the band's score bar, focus outline and boxed-run ground print Black.
 - **Sheet** (`sheet`): the page background, and the text in every reversed ink box.
 - **Press Grey** (`muted`): secondary text: the author, the meta line (parameters, likes, downloads), the facts line, the chart key's prose, footer prose and the "–" no-history mark.
 - **Hairline** (`rule`): 1px row rules and the key strip's bottom rule.
 - **Cyan Wash** (`hover-wash`): row hover.
-- **Band Grey** (`band-muted`): a deep cyan for Press Grey's role inside the No. 1 band (6.5:1 on Chart Cyan, 5.5:1 on Night Chart Cyan).
+- **Band Grey** (`band-muted`): a deep cyan for Press Grey's role inside the No. 1 band (8.7:1 on Chart Cyan, 7.2:1 on Night Chart Cyan).
 - **Dark sheet set** (`sheet-dark`, `ink-dark`, `muted-dark`, `rule-dark`, `hover-wash-dark`): the same roles under `prefers-color-scheme: dark`.
-- **Night Position Grey** (`position-dark`): rank numerals on the dark sheet, except No. 1, which prints in full ink. In light mode ranks print in Ink.
+- **Night Position Grey** (`position-dark`): rank numerals on the dark sheet, except No. 1, which prints in Black on its cyan band. In light mode ranks print in Ink.
 
 ### Dark Sheet Legibility
 The dark sheet is newsprint at night, not white on black. Pure white on near-black glares, and thin light strokes blur, so:
 - Ink is a warm off-white (`#e8e4da`, 14:1 on the sheet) on a lifted warm sheet (`#161513`). Do not push ink back to white or the sheet to black.
-- Text set in Archivo on the dark sheet prints at weight 450 instead of 400, and uses the platform's default font smoothing. Display numerals (title, age, ranks, days, scores, empty title) keep `antialiased`, so the heavy figures stay crisp. Dark type on light grounds (the masthead, the stale strip) keeps the light-mode weight and smoothing.
-- Cyan steps down to `chart-cyan-dark` (`#2cc0cf`). Full-strength cyan on the near-black sheet is the brightest thing on the page by far, and it glares. Ink #111 on it stays above 8:1. Do not push the dark cyan back to `#20d4e6`.
+- Text set in Archivo on the dark sheet prints at weight 450 instead of 400, and uses the platform's default font smoothing. Display numerals (title, age, ranks, days, scores, empty title) keep `antialiased`, so the heavy figures stay crisp. Dark type on light grounds (the masthead, the No. 1 band, the NEW tag) keeps the light-mode weight and smoothing; the stale strip keeps the smoothing.
+- Cyan steps down to `chart-cyan-dark` (`#2cc0cf`). Full-strength cyan on the near-black sheet is the brightest thing on the page by far, and it glares. Ink #111 on it stays above 8:1. Do not push the dark cyan back to `#20d4e6`. The No. 1 band is the one large cyan block inside the dark chart. It is deliberate: the chart's top score earns the masthead's colour.
 - The NEW tag fills on both sheets, in Night Stamp Pink on the dark one. It is a small tag, so it does not glare as a cyan block would.
-- Rank numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores stay full Ink, because they lead the row with the name.
-- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, Night Chart Cyan at 7:1 or more on the dark sheet, black on both pinks at 4.5:1 or more, and Band Grey on both cyans at 4.5:1 or more.
+- Rank numerals step down to `position-dark`: a column of large, full-white 900-weight figures pulls the eye off the model names. Scores outside the No. 1 band stay full Ink, because they lead the row with the name.
+- The tests hold ink, Press Grey and the rank colour at 7:1 or more on both sheets, ink on both cyans at 7:1 or more, Night Chart Cyan at 7:1 or more on the dark sheet, black on both pinks at 4.5:1 or more, Band Grey and black on both cyans at 7:1 or more, and the score bars at 3:1 or more on their track on both sheets.
 
 ### Named Rules
 **The Pink Means New Rule.** Pink means "first day on Hugging Face trending" and nothing else. Long runs print in ink, never pink.
@@ -257,11 +262,11 @@ The page is a centred sheet, max 1440px, with 40px side gutters (16px at 640px a
 
 **Tablet (641 to 1100px).** One chart column; the second list's column heads are hidden so the chart reads as one continuous sheet. "author / name" sits on one line. The meta line wraps, and downloads show.
 
-**Phone (640px and below).** Three columns: 52px left, flexible body, auto score, with 12px gaps; rows pad 14px top and bottom with no side padding. Days on sits right under the rank in the left column, and its head ("Days") sits under "Rank". Boxed runs stack number over unit so a two-digit run fits. The author prints on its own line; the score aligns with the model name, not the author line. Downloads and score bars are hidden. Each fact keeps its words together with no-break spaces, so a date never splits across lines. The name link extends its tap area 10px by 6px. The footer stacks, and its links pad 10px top and bottom.
+**Phone (640px and below).** Three columns: 52px left, flexible body, auto score, with 12px gaps; rows pad 14px top and bottom with no side padding. The No. 1 band pads 10px at the sides and reaches 10px into the gutter, and the stuck column heads cover that reach so the band never shows beside them. Days on sits right under the rank in the left column, and its head ("Days") sits under "Rank". Boxed runs stack number over unit so a two-digit run fits. The author prints on its own line; the score aligns with the model name, not the author line. Downloads and score bars are hidden. Each fact keeps its words together with no-break spaces, so a date never splits across lines. The name link extends its tap area 10px by 6px. The footer stacks, and its links pad 10px top and bottom.
 
 ## Elevation & Depth
 
-The system is flat. There are no shadows. Depth comes from print devices: rule weight (1px hairline, 2px column divider, 3px head and footer rules, 6px masthead rule), solid bands of colour, and small reversed ink boxes. The build has no `box-shadow`.
+The system is flat. There are no shadows. Depth comes from print devices: rule weight (1px hairline, 2px column divider, 3px head and footer rules, 6px masthead rule), solid bands of colour, and small reversed ink boxes. The one `box-shadow` in the build is a 1.5px inset black edge on a NEW tag inside the No. 1 band, where pink on cyan barely separates. It is a stroke with no offset or blur.
 
 ### Named Rules
 **The Rules, Not Boxes Rule.** Separate content with rules of graded weight. Do not use cards, borders on four sides, or shadows.
@@ -288,9 +293,9 @@ When the snapshot is more than 12 hours old (three missed runs), a full-width st
 - **Model link:** one link, "author / name". The author is weight 500 in Press Grey; only the name is underlined (1px, 3px offset, 45% of the text colour), and the underline goes solid on row hover. A long pair breaks before the name, never inside it. A bare id (no author) prints the name only. The link's `title` repeats "author / name".
 - **Meta line:** task (ink, 700), parameter count ("1.73B params"), compact likes, compact downloads (last 30 days). Compact figures carry the full figure in `title` and in screen-reader text.
 - **Facts line:** library, license, "gated" when access needs approval, and the creation date, joined by middle dots.
-- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (an empty track for a score of 0), in Chart Cyan on a 12% ink track. Screen readers hear "trending score".
-- **No. 1:** prints on a Chart Cyan band, the masthead's colour, never reversed in ink. Its rank numeral is larger (44px). The band remaps the tokens: type is black, grey text is Band Grey, a boxed run prints cyan on black, and the score bar prints in black. The band keeps its colour on hover, closes with a 1px black rule, and on phones reaches 10px into the gutter so its type does not touch the edge. Text selection inside it is black with cyan text.
-- **Hover:** cyan wash background and a solid underline on the name.
+- **Score:** "822" over a 7px bar. The bar's width is the model's share of the top score, at least 8% (an empty track for a score of 0), in Bar Cyan (Night Chart Cyan on the dark sheet) on a 12% ink track. Screen readers hear "trending score".
+- **No. 1:** prints on a Chart Cyan band, the masthead's colour, never reversed in ink. Its rank numeral is larger (44px). The band remaps the tokens: type is black, grey text is Band Grey, a boxed run prints cyan on black, and the score bar prints in black. The name's underline is 60% of the text colour, not 45%, because all type on the band is black. A NEW tag on the band gets a 1.5px black edge. The band keeps its colour on hover, closes with a 1px black rule (also as the last row of a column), and on phones reaches 10px into the gutter so its type does not touch the edge. Text selection inside it is black with cyan text.
+- **Hover:** cyan wash background (No. 1 keeps its band) and a solid underline on the name.
 - **Focus:** the row draws a 2px ink outline inset 2px when its name link has focus. Other links use a 2px currentColor outline, offset 2px.
 - **Degrades quietly:** a missing task, parameter count or fact removes its element.
 
@@ -312,12 +317,12 @@ A 3px ink rule over Press Grey 14px text: the data credit to huggingface.co/mode
 
 ## Differences from Trending Repos
 
-The two pages share tokens, type, rules, the days-on boxes, the NEW tag, the dateline and the layout. These parts differ because the data differs:
+The two pages share tokens, type, rules, the days-on boxes, the NEW tag's shape and motion, the dateline and the layout. These parts differ because the data differs:
 
 - **One order, no switch.** GitHub's trending order is not its stars-today order, so trending-repos ranks by stars today and keeps GitHub's order behind a "Rank by" switch. Hugging Face's order is the trending-score order, so this page has one order, and no top-gain chip.
 - **No descriptions, homepages or topics.** The Hugging Face list has none of them. The facts line (library, license, gated, created) takes the description's place under the row.
 - **The author stacks at every desktop width**, and the name ends in an ellipsis, because model names run much longer than repository names.
-- **Cyan, not yellow**, for the band, the score bars and No. 1. NEW is pink on both pages.
+- **Cyan, not yellow**, for the masthead. Inside the chart this page prints cyan score bars, a cyan No. 1 band and a pink NEW tag (since 2026-11-06); see trending-repos' DESIGN.md for its chart colours.
 
 ## Do's and Don'ts
 
